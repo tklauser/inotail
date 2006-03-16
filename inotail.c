@@ -60,19 +60,6 @@ static unsigned short print_headers = 0;
 /* Say my name! */
 static char *program_name = "inotail";
 
-void error(char *message, ...)
-{
-	va_list args;
-
-	va_start(args, message);
-	fprintf(stderr, "%s: ", program_name);
-	vfprintf(stderr, message, args);
-	va_end(args);
-	fprintf(stderr, " (errno: %d=%s)\n", errno, strerror(errno));
-
-	exit(EXIT_FAILURE);
-}
-
 static int dump_remainder(const char *filename, int fd, ssize_t n_bytes)
 {
 	ssize_t written = 0;
@@ -83,11 +70,6 @@ static int dump_remainder(const char *filename, int fd, ssize_t n_bytes)
 		n_bytes = SSIZE_MAX;
 
 	return written;
-}
-
-static void usage(void)
-{
-	fprintf(stderr, "Usage: %s [OPTION]... [FILE]...\n", program_name);
 }
 
 static char *pretty_name(const struct file_struct *f)
@@ -174,11 +156,10 @@ static void check_file(struct file_struct *f)
 
 static int tail_forever(struct file_struct *f, int n_files)
 {
-	int i_fd, len, ret = -1;
+	int i_fd, len;
 	unsigned int i;
-	int last;
-	char buf[1000];
 	struct inotify_event *inev;
+	char buf[1000];
 
 	dprintf("==> tail_forever()\n");
 
@@ -192,8 +173,6 @@ static int tail_forever(struct file_struct *f, int n_files)
 	}
 
 	memset(&buf, 0, sizeof(buf));
-
-	last = n_files - 1;
 
 	while (1) {
 		int fd;
@@ -238,6 +217,7 @@ static int tail_forever(struct file_struct *f, int n_files)
 				/* Ignore */
 			}
 
+			/* Shift one event forward */
 			len -= sizeof(struct inotify_event) + inev->len;
 			inev = (struct inotify_event *) ((char *) inev + sizeof(struct inotify_event) + inev->len);
 		}
@@ -257,6 +237,7 @@ static int tail_lines(struct file_struct *f, uintmax_t n_lines)
 	off_t end_pos;
 
 	dprintf("==> tail_lines()\n");
+
 	if (fstat(f->fd, &stats)) {
 		error("fstat '%s' failed!\n", f->name);
 		return -1;
@@ -289,6 +270,7 @@ static int tail_lines(struct file_struct *f, uintmax_t n_lines)
 static int tail(struct file_struct *f, uintmax_t n_units)
 {
 	dprintf("==> tail()\n");
+
 	return tail_lines(f, n_units);
 }
 
@@ -315,9 +297,18 @@ static int tail_file(struct file_struct *f, uintmax_t n_units)
 	return ret;
 }
 
+static void usage(void)
+{
+	dprintf("==> usage()\n");
+
+	fprintf(stderr, "Usage: %s [OPTION]... [FILE]...\n", program_name);
+}
+
 static void parse_options(int argc, char *argv[], int *n_lines)
 {
 	int c;
+
+	dprintf("==> parse_options()\n");
 
 	while ((c = getopt_long(argc, argv, "hfn:qvV", long_options, NULL)) != -1) {
 		switch (c) {
@@ -355,9 +346,6 @@ int main(int argc, char *argv[])
 	unsigned int i;
 
 	parse_options(argc, argv, &n_lines);
-
-	dprintf("n_lines: %d\n", n_lines);
-	return -1;
 
 	/* Do we have some files to read from? */
 	if (optind < argc) {
