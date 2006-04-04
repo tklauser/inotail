@@ -165,7 +165,7 @@ static int tail_forever(struct file_struct *f, int n_files)
 
 	i_fd = inotify_init();
 	if (i_fd < 0)
-		return ret;
+		return -1;
 
 	for (i = 0; i < n_files; i++) {
 		f[i].i_watch = inotify_add_watch(i_fd, f[i].name, IN_ALL_EVENTS | IN_UNMOUNT);
@@ -206,6 +206,8 @@ static int tail_forever(struct file_struct *f, int n_files)
 			 */
 			if (inev->mask & IN_MODIFY) {
 				dprintf("  File '%s' modified.\n", fil->name);
+				check_file(fil);
+				/* Dump new content */
 			} else if (inev->mask & IN_ATTRIB) {
 				dprintf("  File '%s' attributes changed.\n", fil->name);
 				check_file(fil);
@@ -225,9 +227,9 @@ static int tail_forever(struct file_struct *f, int n_files)
 
 	/* XXX: Never reached. Catch SIGINT and handle it there? */
 	for (i = 0; i < n_files; i++)
-		ret = inotify_rm_watch(i_fd, f[i].i_watch);
+		inotify_rm_watch(i_fd, f[i].i_watch);
 
-	return ret;
+	return 0;
 }
 
 static int tail_lines(struct file_struct *f, uintmax_t n_lines)
@@ -239,8 +241,8 @@ static int tail_lines(struct file_struct *f, uintmax_t n_lines)
 	dprintf("==> tail_lines()\n");
 
 	if (fstat(f->fd, &stats)) {
-		error("fstat '%s' failed!\n", f->name);
-		return -1;
+		perror("fstat()");
+		exit(EXIT_FAILURE);
 	}
 
 	start_pos = lseek(f->fd, 0, SEEK_CUR);
@@ -287,7 +289,7 @@ static int tail_file(struct file_struct *f, uintmax_t n_units)
 	}
 
 	if (f->fd == -1) {
-		error(" Failed to open file '%s'\n", f->name);
+		perror("open()");
 	} else {
 		if (print_headers)
 			write_header(f);
@@ -369,7 +371,7 @@ int main(int argc, char *argv[])
 				forever = 0;
 		}
 
-		printf(stderr, "Reading from stdin is currently not supported.\n");
+		fprintf(stderr, "Reading from stdin is currently not supported.\n");
 	}
 
 	files = malloc(n_files * sizeof(struct file_struct));
