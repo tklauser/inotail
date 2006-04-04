@@ -18,7 +18,13 @@
 
 #define BUFFER_SIZE 4096
 
-off_t lines(int fd, int file_size, unsigned int nr_lines)
+void usage(void)
+{
+	fprintf(stderr, "usage: simpletail [-f] [-n <nr-lines>] <file>\n");
+	exit(EXIT_FAILURE);
+}
+
+off_t lines(int fd, int file_size, unsigned int n_lines)
 {
 	int i;
 	char buf[BUFFER_SIZE];
@@ -28,7 +34,7 @@ off_t lines(int fd, int file_size, unsigned int nr_lines)
 	if (offset < 0)
 		offset = 0;
 
-	while (offset > 0 && nr_lines > 0) {
+	while (offset > 0 && n_lines > 0) {
 		int rc;
 		int block_size = BUFFER_SIZE; /* Size of the current block we're reading */
 
@@ -47,15 +53,15 @@ off_t lines(int fd, int file_size, unsigned int nr_lines)
 		for (i = block_size; i > 0; i--) {
 			if (buf[i] == '\n') {
 				dprintf("  Found \\n at position %d\n", i);
-				nr_lines--;
+				n_lines--;
 
-				if (nr_lines == 0)
+				if (n_lines == 0)
 					break;
 			}
 		}
 	}
 
-	if (nr_lines == 0)
+	if (n_lines == 0)
 		offset += i + 1; /* We don't want the first \n */
 
 	return offset;
@@ -136,20 +142,33 @@ int watch_file(const char *filename, off_t offset)
 
 int main(int argc, char **argv)
 {
-	int fd;
-	int nr_lines = 0;
+	int i, fd;
+	int n_lines = 0;
 	int ret = 0;
+	short forever = 0;
+	char buf[BUFFER_SIZE], *filename;
 	struct stat finfo;
-	char buf[BUFFER_SIZE];
 	off_t offset = 0;
 
-	if (argc < 3) {
-		fprintf(stderr, "%s <nr-lines> <file> <forever?>\n", argv[0]);
-		return -1;
-	}
+	if (argc < 3)
+		usage();
 
-	nr_lines = strtol(argv[1], NULL, 0) + 1;
-	fd = open(argv[2], O_RDONLY);
+	for (i = 1; (i + 1 < argc) && (argv[i][0] == '-'); i++) {
+		switch (argv[i][1]) {
+                case 'f':
+			forever = 1;
+			break;
+		case 'n':
+			n_lines = strtol(argv[++i], NULL, 0) + 1;
+			break;
+                default:
+			usage();
+			break;
+                }
+        }
+
+	filename = argv[i];
+	fd = open(filename, O_RDONLY);
 
 	if (fd < 0) {
 		perror("open()");
@@ -161,7 +180,7 @@ int main(int argc, char **argv)
 		return -1;
 	}
 
-	offset = lines(fd, finfo.st_size, nr_lines);
+	offset = lines(fd, finfo.st_size, n_lines);
 	dprintf("  offset: %lu.\n", offset);
 
 	lseek(fd, offset, SEEK_SET);
@@ -171,8 +190,8 @@ int main(int argc, char **argv)
 
 	close(fd);
 
-	if (argv[3])
-		ret = watch_file(argv[2], finfo.st_size);
+	if (forever)
+		ret = watch_file(filename, finfo.st_size);
 
 	return ret;
 }
