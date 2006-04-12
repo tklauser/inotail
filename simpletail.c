@@ -36,6 +36,7 @@
 #include "inotail.h"
 
 #define BUFFER_SIZE 4096
+#define DEFAULT_N_LINES 10
 
 void usage(void)
 {
@@ -52,6 +53,8 @@ off_t lines(int fd, int file_size, unsigned int n_lines)
 	/* Negative offsets don't make sense here */
 	if (offset < 0)
 		offset = 0;
+
+	n_lines += 1;	/* We also count the last \n */
 
 	while (offset > 0 && n_lines > 0) {
 		int rc;
@@ -162,14 +165,14 @@ int watch_file(const char *filename, off_t offset)
 int main(int argc, char **argv)
 {
 	int i, fd;
-	int n_lines = 0;
+	int n_lines = DEFAULT_N_LINES;
 	int ret = 0;
 	short forever = 0;
 	char buf[BUFFER_SIZE], *filename;
 	struct stat finfo;
 	off_t offset = 0;
 
-	if (argc < 3)
+	if (argc < 2)
 		usage();
 
 	for (i = 1; (i + 1 < argc) && (argv[i][0] == '-'); i++) {
@@ -178,7 +181,7 @@ int main(int argc, char **argv)
 			forever = 1;
 			break;
 		case 'n':
-			n_lines = strtol(argv[++i], NULL, 0) + 1;
+			n_lines = strtol(argv[++i], NULL, 0);
 			break;
                 default:
 			usage();
