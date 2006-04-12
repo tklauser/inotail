@@ -1,5 +1,12 @@
+# Paths
+prefix	= $(HOME)
+BINDIR	= ${prefix}/bin
+DESTDIR	=
+
 CC := gcc
 CFLAGS := -Wall -D_USE_SOURCE
+
+INSTALL := install
 
 DEBUG = false
 
@@ -19,6 +26,9 @@ simpletail: simpletail.o
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
+
+install: simpletail
+	${INSTALL} -m 775 simpletail ${DESTDIR}${BINDIR}
 
 clean:
 	rm -f *.o
