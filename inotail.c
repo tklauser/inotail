@@ -3,7 +3,7 @@
  * A fast implementation of GNU tail which uses the inotify-API present in
  * recent Linux Kernels.
  *
- * Copyright (C) 2005-2006, Tobias Klauser <tklauser@access.unizh.ch>
+ * Copyright (C) 2005-2006, Tobias Klauser <tklauser@distanz.ch>
  *
  * Parts of this program are based on GNU tail included in the GNU coreutils
  * which is:
@@ -329,7 +329,7 @@ static void parse_options(int argc, char *argv[], int *n_lines)
 			print_headers = 1;
 			break;
 		case 'V':
-			fprintf(stdout, "%s %s by Tobias Klauser <tklauser@access.unizh.ch>\n",
+			fprintf(stdout, "%s %s by Tobias Klauser <tklauser@distanz.ch>\n",
 					program_name, VERSION);
 			break;
 		case 'h':

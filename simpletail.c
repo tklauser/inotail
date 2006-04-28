@@ -3,7 +3,7 @@
  * A fast implementation of tail which uses the inotify-API present in
  * recent Linux Kernels.
  *
- * Copyright (C) 2005-2006, Tobias Klauser <tklauser@access.unizh.ch>
+ * Copyright (C) 2005-2006, Tobias Klauser <tklauser@distanz.ch>
  *
  * The idea and some code were taken from turbotail.
  *
