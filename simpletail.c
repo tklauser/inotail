@@ -38,13 +38,24 @@
 #define BUFFER_SIZE 4096
 #define DEFAULT_N_LINES 10
 
-void usage(void)
+/* Print header with filename before tailing the file? */
+static short verbose = 0;
+
+static void usage(void)
 {
 	fprintf(stderr, "usage: simpletail [-f] [-n <nr-lines>] <file>\n");
 	exit(EXIT_FAILURE);
 }
 
-off_t lines(int fd, int file_size, unsigned int n_lines)
+static void write_header(const char *filename)
+{
+	static unsigned short first_file = 1;
+
+	fprintf (stdout, "%s==> %s <==\n", (first_file ? "" : "\n"), filename);
+	first_file = 0;
+}
+
+static off_t lines(int fd, int file_size, unsigned int n_lines)
 {
 	int i;
 	char buf[BUFFER_SIZE];
@@ -89,7 +100,7 @@ off_t lines(int fd, int file_size, unsigned int n_lines)
 	return offset;
 }
 
-int watch_file(const char *filename, off_t offset)
+static int watch_file(const char *filename, off_t offset)
 {
 	int ifd, watch;
 	struct inotify_event *inev;
@@ -183,6 +194,9 @@ int main(int argc, char **argv)
 		case 'n':
 			n_lines = strtol(argv[++i], NULL, 0);
 			break;
+		case 'v':
+			verbose = 1;
+			break;
                 default:
 			usage();
 			break;
@@ -204,6 +218,9 @@ int main(int argc, char **argv)
 
 	offset = lines(fd, finfo.st_size, n_lines);
 	dprintf("  offset: %lu.\n", offset);
+
+	if (verbose)
+		write_header(filename);
 
 	lseek(fd, offset, SEEK_SET);
 	while (read(fd, &buf, BUFFER_SIZE) != 0) {
