@@ -35,6 +35,8 @@
 
 #include "inotail.h"
 
+#define VERSION "0.1"
+
 #define BUFFER_SIZE 4096
 #define DEFAULT_N_LINES 10
 
@@ -176,8 +178,8 @@ static int watch_file(const char *filename, off_t offset)
 int main(int argc, char **argv)
 {
 	int i, fd;
-	int n_lines = DEFAULT_N_LINES;
 	int ret = 0;
+	int n_lines = DEFAULT_N_LINES;
 	short forever = 0;
 	char buf[BUFFER_SIZE], *filename;
 	struct stat finfo;
@@ -186,17 +188,21 @@ int main(int argc, char **argv)
 	if (argc < 2)
 		usage();
 
-	for (i = 1; (i + 1 < argc) && (argv[i][0] == '-'); i++) {
+	for (i = 1; (i < argc) && (argv[i][0] == '-'); i++) {
 		switch (argv[i][1]) {
                 case 'f':
 			forever = 1;
 			break;
 		case 'n':
-			n_lines = strtol(argv[++i], NULL, 0);
+			n_lines = strtoul(argv[++i], NULL, 0);
 			break;
 		case 'v':
 			verbose = 1;
 			break;
+		case 'V':
+			fprintf(stderr, "simpletail %s\n", VERSION);
+			return 0;
+		case 'h':
                 default:
 			usage();
 			break;
