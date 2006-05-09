@@ -141,13 +141,20 @@ static int watch_file(const char *filename, off_t offset)
 					return -1;
 				}
 
-				/* XXX: block_size could be bigger than BUFFER_SIZE */
 				block_size = finfo.st_size - offset;
+
 				if (block_size < 0)
 					block_size = 0;
 
+				/* XXX: Dirty hack for now to make sure
+				 * block_size doesn't get bigger than
+				 * BUFFER_SIZE
+				 */
+				if (block_size > BUFFER_SIZE)
+					block_size = BUFFER_SIZE;
+
 				lseek(ffd, offset, SEEK_SET);
-				while (read(ffd, &fbuf, BUFFER_SIZE) != 0) {
+				while (read(ffd, &fbuf, block_size) != 0) {
 					write(STDOUT_FILENO, fbuf, block_size);
 				}
 
