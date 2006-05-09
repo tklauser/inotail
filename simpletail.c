@@ -90,14 +90,14 @@ static off_t lines(int fd, int file_size, unsigned int n_lines)
 				dprintf("  Found \\n at position %d\n", i);
 				n_lines--;
 
-				if (n_lines == 0)
+				if (n_lines == 0) {
+					/* We don't want the first \n */
+					offset += i + 1;
 					break;
+				}
 			}
 		}
 	}
-
-	if (n_lines == 0)
-		offset += i + 1; /* We don't want the first \n */
 
 	return offset;
 }
