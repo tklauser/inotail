@@ -21,6 +21,8 @@
  * Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
+#define _GNU_SOURCE
+
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -35,7 +37,7 @@
 
 #include "inotail.h"
 
-#define VERSION "0.1"
+#define VERSION "0.0"
 
 #define BUFFER_SIZE 4096
 #define DEFAULT_N_LINES 10
@@ -184,24 +186,28 @@ static int watch_file(const char *filename, off_t offset)
 
 int main(int argc, char **argv)
 {
-	int i, fd;
-	int ret = 0;
+	int opt, fd, ret = 0;
+	int n_files = 0;
 	int n_lines = DEFAULT_N_LINES;
 	short forever = 0;
-	char buf[BUFFER_SIZE], *filename;
+	char **filenames;
+	char buf[BUFFER_SIZE];
+	struct file_struct *files;
 	struct stat finfo;
 	off_t offset = 0;
 
 	if (argc < 2)
 		usage();
 
-	for (i = 1; (i < argc) && (argv[i][0] == '-'); i++) {
-		switch (argv[i][1]) {
+	for (opt = 1; (opt < argc) && (argv[opt][0] == '-'); opt++) {
+		switch (argv[opt][1]) {
                 case 'f':
 			forever = 1;
 			break;
 		case 'n':
-			n_lines = strtoul(argv[++i], NULL, 0);
+			n_lines = strtoul(argv[++opt], NULL, 0);
+			if (n_lines < 0)
+				n_lines = 0;
 			break;
 		case 'v':
 			verbose = 1;
@@ -216,8 +222,16 @@ int main(int argc, char **argv)
                 }
         }
 
-	filename = argv[i];
-	fd = open(filename, O_RDONLY);
+	/* Do we have some files to read from? */
+	if (opt < argc) {
+		n_files = argc - opt;
+		filenames = argv + opt;
+	} else {
+		usage();
+		return -1;
+	}
+
+	fd = open(*filenames, O_RDONLY);
 
 	if (fd < 0) {
 		perror("open()");
@@ -233,7 +247,7 @@ int main(int argc, char **argv)
 	dprintf("  offset: %lu.\n", offset);
 
 	if (verbose)
-		write_header(filename);
+		write_header(*filenames);
 
 	lseek(fd, offset, SEEK_SET);
 	while (read(fd, &buf, BUFFER_SIZE) != 0) {
@@ -243,7 +257,7 @@ int main(int argc, char **argv)
 	close(fd);
 
 	if (forever)
-		ret = watch_file(filename, finfo.st_size);
+		ret = watch_file(*filenames, finfo.st_size);
 
 	return ret;
 }
