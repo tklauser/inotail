@@ -1,5 +1,5 @@
 /*
- * simpletail.c
+ * inotail.c
  * A fast implementation of tail which uses the inotify-API present in
  * recent Linux Kernels.
  *

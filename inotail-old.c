@@ -1,5 +1,5 @@
 /*
- * inotail.c
+ * inotail-old.c
  * A fast implementation of GNU tail which uses the inotify-API present in
  * recent Linux Kernels.
  *
