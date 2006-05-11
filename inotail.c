@@ -1,13 +1,9 @@
 /*
- * inotail.c
- * A fast implementation of GNU tail which uses the inotify-API present in
+ * simpletail.c
+ * A fast implementation of tail which uses the inotify-API present in
  * recent Linux Kernels.
  *
  * Copyright (C) 2005-2006, Tobias Klauser <tklauser@distanz.ch>
- *
- * Parts of this program are based on GNU tail included in the GNU coreutils
- * which is:
- * Copyright (C) 1989, 90, 91, 1995-2005 Free Software Foundation, Inc.
  *
  * The idea and some code were taken from turbotail.
  *
@@ -27,363 +23,261 @@
 
 #define _GNU_SOURCE
 
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <stdarg.h>
-
 #include <errno.h>
-#include <fcntl.h>
-#include <getopt.h>
-#include <inttypes.h>
 #include <string.h>
-
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <sys/syscall.h>
 
 #include "inotify.h"
 #include "inotify-syscalls.h"
 
 #include "inotail.h"
 
-#define VERSION "0.1"
+#define VERSION "0.0"
 
-/* XXX: Move all global variables into a struct and use :1 */
-
-/* If !=0, read from the ends of all specified files until killed. */
-static unsigned short forever;
+#define BUFFER_SIZE 4096
+#define DEFAULT_N_LINES 10
 
 /* Print header with filename before tailing the file? */
-static unsigned short print_headers = 0;
+static short verbose = 0;
 
-/* Say my name! */
-static char *program_name = "inotail";
-
-static int dump_remainder(const char *filename, int fd, ssize_t n_bytes)
+static void usage(void)
 {
-	ssize_t written = 0;
-
-	dprintf("==> dump_remainder()\n");
-
-	if (n_bytes > SSIZE_MAX)
-		n_bytes = SSIZE_MAX;
-
-	return written;
+	fprintf(stderr, "usage: simpletail [-f] [-n <nr-lines>] <file>\n");
+	exit(EXIT_FAILURE);
 }
 
-static char *pretty_name(const struct file_struct *f)
-{
-	return ((strcmp(f->name, "-") == 0) ? "standard input" : f->name);
-}
-
-static void write_header(const struct file_struct *f)
+static void write_header(const char *filename)
 {
 	static unsigned short first_file = 1;
 
-	fprintf (stdout, "%s==> %s <==\n", (first_file ? "" : "\n"), pretty_name(f));
+	fprintf (stdout, "%s==> %s <==\n", (first_file ? "" : "\n"), filename);
 	first_file = 0;
 }
 
-static int file_lines(struct file_struct *f, uintmax_t n_lines, off_t start_pos, off_t end_pos)
+static off_t lines(int fd, int file_size, unsigned int n_lines)
 {
-	char buffer[BUFSIZ];
-	size_t bytes_read;
-	off_t pos = end_pos;
+	int i;
+	char buf[BUFFER_SIZE];
+	off_t offset = file_size;
 
-	dprintf("==> file_lines()\n");
+	/* Negative offsets don't make sense here */
+	if (offset < 0)
+		offset = 0;
 
-	if (n_lines == 0)
-		return 1;
+	n_lines += 1;	/* We also count the last \n */
 
-	dprintf("  start_pos: %lld\n", (unsigned long long) start_pos);
-	dprintf("  end_pos: %lld\n", (unsigned long long) end_pos);
+	while (offset > 0 && n_lines > 0) {
+		int rc;
+		int block_size = BUFFER_SIZE; /* Size of the current block we're reading */
 
-	/* Set `bytes_read' to the size of the last, probably partial, buffer;
-	 *      0 < `bytes_read' <= `BUFSIZ'.
-	 */
-	bytes_read = (pos - start_pos) % BUFSIZ;
-	if (bytes_read == 0)
-		bytes_read = BUFSIZ;
+		if (offset < BUFFER_SIZE)
+			block_size = offset;
 
-	dprintf("  bytes_read: %zd\n", bytes_read);
+		/* Start of current block */
+		offset -= block_size;
 
-	/* Make `pos' a multiple of `BUFSIZ' (0 if the file is short), so that
-	 * all
-	 *      reads will be on block boundaries, which might increase
-	 *      efficiency.  */
-	pos -= bytes_read;
+		dprintf("  offset: %lu\n", offset);
 
-	dprintf("  pos: %lld\n", pos);
+		lseek(fd, offset, SEEK_SET);
 
-	lseek(f->fd, pos, SEEK_SET);
-	bytes_read = read(f->fd, buffer, bytes_read);
+		rc = read(fd, &buf, block_size);
 
-	/* Count the incomplete line on files that don't end with a newline. */
-	if (bytes_read && buffer[bytes_read - 1] != '\n')
-		--n_lines;
+		for (i = block_size; i > 0; i--) {
+			if (buf[i] == '\n') {
+				dprintf("  Found \\n at position %d\n", i);
+				n_lines--;
 
-	do {
-		size_t n = bytes_read;
-		while (n) {
-			const char *nl;
-			nl = memrchr(buffer, '\n', n);
-			if (nl == NULL)
-				break;
+				if (n_lines == 0) {
+					/* We don't want the first \n */
+					offset += i + 1;
+					break;
+				}
+			}
 		}
-
-		/* XXX XXX XXX XXX */
-
-		/* Not enough newlines in that buffer. Just print everything */
-		if (pos == start_pos) {
-			lseek(f->fd, start_pos, SEEK_SET);
-			return 1;
-		}
-		pos -= BUFSIZ;
-	} while (bytes_read > 0);
-
-	return 1;
-}
-
-static void check_file(struct file_struct *f)
-{
-	struct stat new_stats;
-
-	dprintf("==> check_file()\n");
-
-	dprintf(" checking '%s'\n", f->name);
-}
-
-static int tail_forever(struct file_struct *f, int n_files)
-{
-	int i_fd, len;
-	unsigned int i;
-	struct inotify_event *inev;
-	char buf[1000];
-
-	dprintf("==> tail_forever()\n");
-
-	i_fd = inotify_init();
-	if (i_fd < 0)
-		return -1;
-
-	for (i = 0; i < n_files; i++) {
-		f[i].i_watch = inotify_add_watch(i_fd, f[i].name, IN_ALL_EVENTS | IN_UNMOUNT);
-		dprintf("  Watch (%d) added to '%s' (%d)\n", f[i].i_watch, f[i].name, i);
 	}
+
+	return offset;
+}
+
+static int tail_file(struct file_struct *f, int n_lines)
+{
+	int fd;
+	off_t offset = 0;
+	char buf[BUFFER_SIZE];
+	struct stat finfo;
+
+	fd = open(f->name, O_RDONLY);
+
+	if (fd < 0) {
+		perror("open()");
+		return -1;
+	}
+
+	if (fstat(fd, &finfo) < 0) {
+		perror("fstat()");
+		return -1;
+	}
+
+	f->st_size = finfo.st_size;
+
+	offset = lines(fd, f->st_size, n_lines);
+	dprintf("  offset: %lu.\n", offset);
+
+	if (verbose)
+		write_header(f->name);
+
+	lseek(fd, offset, SEEK_SET);
+	while (read(fd, &buf, BUFFER_SIZE) != 0) {
+		write(STDOUT_FILENO, buf, f->st_size - offset);
+	}
+
+	close(fd);
+
+	return 0;
+}
+
+static int watch_file(struct file_struct *f)
+{
+	int ifd, watch;
+	off_t offset;
+	struct inotify_event *inev;
+	char buf[BUFFER_SIZE];
+
+	dprintf(">> Watching %s\n", filename);
+
+	ifd = inotify_init();
+	if (ifd < 0) {
+		perror("inotify_init()");
+		exit(-2);
+	}
+
+	watch = inotify_add_watch(ifd, f->name, IN_MODIFY|IN_DELETE_SELF|IN_MOVE_SELF|IN_UNMOUNT);
 
 	memset(&buf, 0, sizeof(buf));
 
 	while (1) {
-		int fd;
-		ssize_t bytes_tailed = 0;
+		int len;
 
-		len = read(i_fd, buf, sizeof(buf));
+		len = read(ifd, buf, sizeof(buf));
 		inev = (struct inotify_event *) &buf;
 
 		while (len > 0) {
-			struct file_struct *fil;
-
-			/* Which file has produced the event? */
-			for (i = 0; i < n_files; i++) {
-				if (!f[i].ignore && f[i].fd >= 0 && f[i].i_watch == inev->wd) {
-					fil = &f[i];
-					break;
-				}
-			}
-
-			/* We should at least catch the following
-			 * events:
-			 *  - IN_MODIFY, thats what we hopefully get
-			 *  	most of the time
-			 *  - IN_ATTRIB, still readable?
-			 *  - IN_MOVE, reopen the file at the new
-			 *	position?
-			 *  - IN_DELETE_SELF, we need to check if the
-			 *	file is still there or is really gone
-			 *  - IN_MOVE_SELF, ditto
-			 *  - IN_UNMOUNT, die gracefully
-			 */
 			if (inev->mask & IN_MODIFY) {
-				dprintf("  File '%s' modified.\n", fil->name);
-				check_file(fil);
-				/* Dump new content */
-			} else if (inev->mask & IN_ATTRIB) {
-				dprintf("  File '%s' attributes changed.\n", fil->name);
-				check_file(fil);
-			} else if (inev->mask & IN_MOVE) {
-			} else if (inev->mask & IN_DELETE_SELF) {
-				dprintf("  File '%s' possibly deleted.\n", fil->name);
-				check_file(fil);
-			} else {
-				/* Ignore */
+				int ffd, block_size;
+				char fbuf[BUFFER_SIZE];
+				struct stat finfo;
+
+				offset = f->st_size;
+
+				dprintf("  File '%s' modified.\n", filename);
+				dprintf("  offset: %lu.\n", offset);
+
+				ffd = open(f->name, O_RDONLY);
+				if (fstat(ffd, &finfo) < 0) {
+					perror("fstat()");
+					return -1;
+				}
+
+				f->st_size = finfo.st_size;
+				block_size = f->st_size - offset;
+
+				if (block_size < 0)
+					block_size = 0;
+
+				/* XXX: Dirty hack for now to make sure
+				 * block_size doesn't get bigger than
+				 * BUFFER_SIZE
+				 */
+				if (block_size > BUFFER_SIZE)
+					block_size = BUFFER_SIZE;
+
+				lseek(ffd, offset, SEEK_SET);
+				while (read(ffd, &fbuf, block_size) != 0) {
+					write(STDOUT_FILENO, fbuf, block_size);
+				}
+
+
+				close(ffd);
 			}
 
-			/* Shift one event forward */
+			if (inev->mask & IN_DELETE_SELF) {
+				dprintf("  File '%s' deleted.\n", filename);
+				return -1;
+			}
+			if (inev->mask & IN_MOVE_SELF) {
+				dprintf("  File '%s' moved.\n", filename);
+				return -1;
+			}
+			if (inev->mask & IN_UNMOUNT) {
+				dprintf("  Device containing file '%s' unmounted.\n", filename);
+				return -1;
+			}
+
 			len -= sizeof(struct inotify_event) + inev->len;
 			inev = (struct inotify_event *) ((char *) inev + sizeof(struct inotify_event) + inev->len);
 		}
 	}
-
-	/* XXX: Never reached. Catch SIGINT and handle it there? */
-	for (i = 0; i < n_files; i++)
-		inotify_rm_watch(i_fd, f[i].i_watch);
-
-	return 0;
 }
 
-static int tail_lines(struct file_struct *f, uintmax_t n_lines)
+int main(int argc, char **argv)
 {
-	struct stat stats;
-	off_t start_pos = -1;
-	off_t end_pos;
+	int i, opt, ret = 0;
+	int n_files = 0;
+	int n_lines = DEFAULT_N_LINES;
+	short forever = 0;
+	char **filenames;
+	struct file_struct *files;
 
-	dprintf("==> tail_lines()\n");
+	if (argc < 2)
+		usage();
 
-	if (fstat(f->fd, &stats)) {
-		perror("fstat()");
-		exit(EXIT_FAILURE);
-	}
-
-	start_pos = lseek(f->fd, 0, SEEK_CUR);
-	end_pos = lseek(f->fd, 0, SEEK_END);
-
-	/* Use file_lines only if FD refers to a regular file for
-	 * which lseek(... SEEK_END) worked.
-	 */
-	if (S_ISREG(stats.st_mode) && start_pos != -1 && start_pos < end_pos) {
-		if (end_pos != 0 && !file_lines(f, n_lines, start_pos, end_pos))
-			return -1;
-	} else {
-	/* Under very unlikely circumstances, it is possible to reach
-	this point after positioning the file pointer to end of file
-	via the `lseek (...SEEK_END)' above.  In that case, reposition
-	the file pointer back to start_pos before calling pipe_lines.  */
-/*	if (start_pos != -1)
-	xlseek (fd, start_pos, SEEK_SET, pretty_filename);
-
-	return pipe_lines (pretty_filename, fd, n_lines, read_pos);
-*/
-	}
-
-	return 0;
-}
-
-static int tail(struct file_struct *f, uintmax_t n_units)
-{
-	dprintf("==> tail()\n");
-
-	return tail_lines(f, n_units);
-}
-
-static int tail_file(struct file_struct *f, uintmax_t n_units)
-{
-	int ret = 0;
-
-	dprintf("==> tail_file()\n");
-
-	if (strcmp(f->name, "-") == 0) {
-		f->fd = STDIN_FILENO;
-	} else {
-		f->fd = open(f->name, O_RDONLY);
-	}
-
-	if (f->fd == -1) {
-		perror("open()");
-	} else {
-		if (print_headers)
-			write_header(f);
-		ret = tail(f, n_units);
-	}
-
-	return ret;
-}
-
-static void usage(void)
-{
-	dprintf("==> usage()\n");
-
-	fprintf(stderr, "Usage: %s [OPTION]... [FILE]...\n", program_name);
-}
-
-static void parse_options(int argc, char *argv[], int *n_lines)
-{
-	int c;
-
-	dprintf("==> parse_options()\n");
-
-	while ((c = getopt_long(argc, argv, "hfn:qvV", long_options, NULL)) != -1) {
-		switch (c) {
-		case 'f':
+	for (opt = 1; (opt < argc) && (argv[opt][0] == '-'); opt++) {
+		switch (argv[opt][1]) {
+                case 'f':
 			forever = 1;
 			break;
 		case 'n':
-			*n_lines = strtol(optarg, NULL, 0);
-			if (*n_lines < 0)
-				*n_lines = 0;
-			break;
-		case 'q':
-			print_headers = 0;
+			n_lines = strtoul(argv[++opt], NULL, 0);
+			if (n_lines < 0)
+				n_lines = 0;
 			break;
 		case 'v':
-			print_headers = 1;
+			verbose = 1;
 			break;
 		case 'V':
-			fprintf(stdout, "%s %s by Tobias Klauser <tklauser@distanz.ch>\n",
-					program_name, VERSION);
-			break;
+			fprintf(stderr, "simpletail %s\n", VERSION);
+			return 0;
 		case 'h':
-		default:
+                default:
 			usage();
-		}
-	}
-}
-
-int main(int argc, char *argv[])
-{
-	int n_files = 0;
-	int n_lines = DEFAULT_N_LINES;
-	struct file_struct *files;
-	char **filenames;
-	unsigned int i;
-
-	parse_options(argc, argv, &n_lines);
+			break;
+                }
+        }
 
 	/* Do we have some files to read from? */
-	if (optind < argc) {
-		n_files = argc - optind;
-		filenames = argv + optind;
-	} else {	/* OK, we read from stdin */
-		static char *dummy_stdin = "-";
-
-		n_files = 1;
-		filenames = &dummy_stdin;
-
-		/*
-		 * POSIX says that -f is ignored if no file operand is specified
-		 * and standard input is a pipe.
-		 */
-		if (forever) {
-			struct stat stats;
-			/* stdin might be a socket on some systems */
-			if ((fstat(STDIN_FILENO, &stats) == 0)
-					&& (S_ISFIFO(stats.st_mode) || S_ISSOCK(stats.st_mode)))
-				forever = 0;
-		}
-
-		fprintf(stderr, "Reading from stdin is currently not supported.\n");
+	if (opt < argc) {
+		n_files = argc - opt;
+		filenames = argv + opt;
+	} else {
+		usage();
+		return -1;
 	}
 
 	files = malloc(n_files * sizeof(struct file_struct));
 	for (i = 0; i < n_files; i++) {
 		files[i].name = filenames[i];
-		tail_file(&files[i], n_lines);
+		ret &= tail_file(&files[i], n_lines);
 	}
 
 	if (forever)
-		tail_forever(files, n_files);
+		ret = watch_file(&files[0]);
 
 	free(files);
 
-	exit(EXIT_SUCCESS);
+	return ret;
 }

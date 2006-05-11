@@ -14,21 +14,23 @@ ifeq ($(strip $(DEBUG)),true)
 	CFLAGS  += -g -DDEBUG
 endif
 
-PROGRAMS := inotail inotify-watchdir simpletail
+PROGRAMS := inotail inotail-old inotify-watchdir #simpletail
 
 all: $(PROGRAMS)
 
 inotail: inotail.o
 
+inotail-old: inotail-old.o
+
 inotify-watchdir: inotify-watchdir.o
 
-simpletail: simpletail.o
+#simpletail: simpletail.o
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
-install: simpletail
-	${INSTALL} -m 775 simpletail ${DESTDIR}${BINDIR}
+install: inotail
+	${INSTALL} -m 775 inotail ${DESTDIR}${BINDIR}
 
 clean:
 	rm -f *.o

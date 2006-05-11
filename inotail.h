@@ -10,12 +10,12 @@
 
 /* Every tailed file is represented as a file_struct */
 struct file_struct {
-	char *name;	/* Name of file (or '-' for stdin) */
-	int fd;		/* File descriptor (or -1 if file is not open */
-	int ignore:1;	/* Ignore file? */
+	char	*name;		/* Name of file (or '-' for stdin) */
+	int 	fd;		/* File descriptor (or -1 if file is not open */
+	int 	ignore:1;	/* Ignore file? */
+	off_t	st_size;	/* File size */
 
 	int i_watch;	/* Inotify watch associated with file_struct */
-
 };
 
 struct option const long_options[] = {
