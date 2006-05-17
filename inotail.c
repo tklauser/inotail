@@ -141,14 +141,12 @@ static int tail_file(struct file_struct *f, int n_lines)
 	return 0;
 }
 
-static int watch_file(struct file_struct *f)
+static int watch_files(struct file_struct *f, int n_files)
 {
-	int ifd, watch;
+	int ifd, i;
 	off_t offset;
 	struct inotify_event *inev;
 	char buf[BUFFER_SIZE];
-
-	dprintf(">> Watching %s\n", filename);
 
 	ifd = inotify_init();
 	if (ifd < 0) {
@@ -156,7 +154,11 @@ static int watch_file(struct file_struct *f)
 		exit(-2);
 	}
 
-	watch = inotify_add_watch(ifd, f->name, IN_MODIFY|IN_DELETE_SELF|IN_MOVE_SELF|IN_UNMOUNT);
+	for (i = 0; i < n_files; i++) {
+		f[i].i_watch = inotify_add_watch(ifd, f[i].name,
+							IN_MODIFY|IN_DELETE_SELF|IN_MOVE_SELF|IN_UNMOUNT);
+		dprintf("  Watch (%d) added to '%s' (%d)\n", f[i].i_watch, f[i].name, i);
+	}
 
 	memset(&buf, 0, sizeof(buf));
 
@@ -167,24 +169,34 @@ static int watch_file(struct file_struct *f)
 		inev = (struct inotify_event *) &buf;
 
 		while (len > 0) {
+			struct file_struct *fil;
+
+			/* Which file has produced the event? */
+			for (i = 0; i < n_files; i++) {
+				if (!f[i].ignore && f[i].i_watch == inev->wd) {
+					fil = &f[i];
+					break;
+				}
+			}
+
 			if (inev->mask & IN_MODIFY) {
 				int ffd, block_size;
 				char fbuf[BUFFER_SIZE];
 				struct stat finfo;
 
-				offset = f->st_size;
+				offset = fil->st_size;
 
-				dprintf("  File '%s' modified.\n", filename);
+				dprintf("  File '%s' modified.\n", fil->name);
 				dprintf("  offset: %lu.\n", offset);
 
-				ffd = open(f->name, O_RDONLY);
+				ffd = open(fil->name, O_RDONLY);
 				if (fstat(ffd, &finfo) < 0) {
 					perror("fstat()");
 					return -1;
 				}
 
-				f->st_size = finfo.st_size;
-				block_size = f->st_size - offset;
+				fil->st_size = finfo.st_size;
+				block_size = fil->st_size - offset;
 
 				if (block_size < 0)
 					block_size = 0;
@@ -196,6 +208,9 @@ static int watch_file(struct file_struct *f)
 				if (block_size > BUFFER_SIZE)
 					block_size = BUFFER_SIZE;
 
+				if (verbose)
+					write_header(fil->name);
+
 				lseek(ffd, offset, SEEK_SET);
 				while (read(ffd, &fbuf, block_size) != 0) {
 					write(STDOUT_FILENO, fbuf, block_size);
@@ -206,15 +221,15 @@ static int watch_file(struct file_struct *f)
 			}
 
 			if (inev->mask & IN_DELETE_SELF) {
-				dprintf("  File '%s' deleted.\n", filename);
+				dprintf("  File '%s' deleted.\n", fil->name);
 				return -1;
 			}
 			if (inev->mask & IN_MOVE_SELF) {
-				dprintf("  File '%s' moved.\n", filename);
+				dprintf("  File '%s' moved.\n", fil->name);
 				return -1;
 			}
 			if (inev->mask & IN_UNMOUNT) {
-				dprintf("  Device containing file '%s' unmounted.\n", filename);
+				dprintf("  Device containing file '%s' unmounted.\n", fil->name);
 				return -1;
 			}
 
@@ -275,7 +290,7 @@ int main(int argc, char **argv)
 	}
 
 	if (forever)
-		ret = watch_file(&files[0]);
+		ret = watch_files(files, n_files);
 
 	free(files);
 
