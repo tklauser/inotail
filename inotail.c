@@ -211,11 +211,11 @@ static int watch_files(struct file_struct *f, int n_files)
 				if (verbose)
 					write_header(fil->name);
 
+				memset(&fbuf, 0, sizeof(fbuf));
 				lseek(ffd, offset, SEEK_SET);
 				while (read(ffd, &fbuf, block_size) != 0) {
 					write(STDOUT_FILENO, fbuf, block_size);
 				}
-
 
 				close(ffd);
 			}
