@@ -103,13 +103,13 @@ static off_t lines_to_offset(int fd, int file_size, unsigned int n_lines)
 
 static int tail_file(struct file_struct *f, int n_lines)
 {
-	int fd, rc;
+	int fd;
+	ssize_t rc = 0;
 	off_t offset = 0;
 	char buf[BUFFER_SIZE];
 	struct stat finfo;
 
 	fd = open(f->name, O_RDONLY);
-
 	if (fd < 0) {
 		perror("open()");
 		return -1;
@@ -129,8 +129,10 @@ static int tail_file(struct file_struct *f, int n_lines)
 
 	lseek(fd, offset, SEEK_SET);
 
-	while (read(fd, &buf, BUFFER_SIZE) != 0) {
-		rc = write(STDOUT_FILENO, buf, f->st_size - offset);
+	while ((rc = read(fd, &buf, BUFFER_SIZE)) != 0) {
+		dprintf("  f->st_size - offset: %lu\n", f->st_size - offset);
+		dprintf("  rc:                  %d\n", rc);
+		write(STDOUT_FILENO, buf, (size_t) rc);
 	}
 
 	close(fd);
