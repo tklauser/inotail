@@ -59,7 +59,7 @@ static void write_header(const char *filename)
 	first_file = 0;
 }
 
-static off_t lines(int fd, int file_size, unsigned int n_lines)
+static off_t lines_to_offset(int fd, int file_size, unsigned int n_lines)
 {
 	int i;
 	char buf[BUFFER_SIZE];
@@ -81,15 +81,12 @@ static off_t lines(int fd, int file_size, unsigned int n_lines)
 		/* Start of current block */
 		offset -= block_size;
 
-		dprintf("  offset: %lu\n", offset);
-
 		lseek(fd, offset, SEEK_SET);
 
 		rc = read(fd, &buf, block_size);
 
 		for (i = block_size; i > 0; i--) {
 			if (buf[i] == '\n') {
-				dprintf("  Found \\n at position %d\n", i);
 				n_lines--;
 
 				if (n_lines == 0) {
@@ -106,7 +103,7 @@ static off_t lines(int fd, int file_size, unsigned int n_lines)
 
 static int tail_file(struct file_struct *f, int n_lines)
 {
-	int fd;
+	int fd, rc;
 	off_t offset = 0;
 	char buf[BUFFER_SIZE];
 	struct stat finfo;
@@ -125,15 +122,15 @@ static int tail_file(struct file_struct *f, int n_lines)
 
 	f->st_size = finfo.st_size;
 
-	offset = lines(fd, f->st_size, n_lines);
-	dprintf("  offset: %lu.\n", offset);
+	offset = lines_to_offset(fd, f->st_size, n_lines);
 
 	if (verbose)
 		write_header(f->name);
 
 	lseek(fd, offset, SEEK_SET);
+
 	while (read(fd, &buf, BUFFER_SIZE) != 0) {
-		write(STDOUT_FILENO, buf, f->st_size - offset);
+		rc = write(STDOUT_FILENO, buf, f->st_size - offset);
 	}
 
 	close(fd);
@@ -150,6 +147,7 @@ static int watch_files(struct file_struct *f, int n_files)
 
 	ifd = inotify_init();
 	if (ifd < 0) {
+		fprintf(stderr, "Your kernel does not support inotify.\n");
 		perror("inotify_init()");
 		exit(-2);
 	}
@@ -265,7 +263,7 @@ int main(int argc, char **argv)
 			verbose = 1;
 			break;
 		case 'V':
-			fprintf(stderr, "simpletail %s\n", VERSION);
+			fprintf(stderr, "inotail %s\n", VERSION);
 			return 0;
 		case 'h':
                 default:
@@ -279,6 +277,7 @@ int main(int argc, char **argv)
 		n_files = argc - opt;
 		filenames = argv + opt;
 	} else {
+		/* For now, reading from stdin will be implemented later (tm) */
 		usage();
 		return -1;
 	}
