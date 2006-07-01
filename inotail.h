@@ -2,11 +2,13 @@
 #define _INOTAIL_H
 
 #include <limits.h>
-#include <getopt.h>
 #include <stdlib.h>
 
 /* Number of items to tail. */
 #define DEFAULT_N_LINES 10
+
+/* tail modes */
+enum { M_LINES, M_BYTES };
 
 /* Every tailed file is represented as a file_struct */
 struct file_struct {
@@ -15,9 +17,10 @@ struct file_struct {
 	int 	ignore:1;	/* Ignore file? */
 	off_t	st_size;	/* File size */
 
-	int i_watch;	/* Inotify watch associated with file_struct */
+	int i_watch;		/* Inotify watch associated with file_struct */
 };
 
+/*
 struct option const long_options[] = {
 	{"lines", required_argument, NULL, 'n'},
 	{"quiet", no_argument, NULL, 'q'},
@@ -27,6 +30,7 @@ struct option const long_options[] = {
 	{"version", no_argument, NULL, 'V'},
 	{NULL, 0, NULL, 0}
 };
+*/
 
 #ifdef DEBUG
 #define dprintf(fmt, args...) fprintf(stderr, fmt, ##args)
