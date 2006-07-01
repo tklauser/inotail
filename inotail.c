@@ -37,7 +37,7 @@
 
 #include "inotail.h"
 
-#define VERSION "0.0"
+#define VERSION "0.1"
 
 #define BUFFER_SIZE 4096
 
