@@ -40,7 +40,6 @@
 #define VERSION "0.0"
 
 #define BUFFER_SIZE 4096
-#define DEFAULT_N_LINES 10
 
 /* Print header with filename before tailing the file? */
 static short verbose = 0;
@@ -65,6 +64,8 @@ static off_t lines_to_offset(int fd, int file_size, unsigned int n_lines)
 	char buf[BUFFER_SIZE];
 	off_t offset = file_size;
 
+	memset(&buf, 0, sizeof(buf));
+
 	/* Negative offsets don't make sense here */
 	if (offset < 0)
 		offset = 0;
@@ -84,6 +85,8 @@ static off_t lines_to_offset(int fd, int file_size, unsigned int n_lines)
 		lseek(fd, offset, SEEK_SET);
 
 		rc = read(fd, &buf, block_size);
+		if (rc < 0)
+			return rc;
 
 		for (i = block_size; i > 0; i--) {
 			if (buf[i] == '\n') {
@@ -101,7 +104,12 @@ static off_t lines_to_offset(int fd, int file_size, unsigned int n_lines)
 	return offset;
 }
 
-static int tail_file(struct file_struct *f, int n_lines)
+static off_t bytes_to_offset(int fd, int file_size, unsigned int n_lines)
+{
+	return (file_size - n_lines);
+}
+
+static int tail_file(struct file_struct *f, int n_lines, char mode)
 {
 	int fd;
 	ssize_t rc = 0;
@@ -109,6 +117,7 @@ static int tail_file(struct file_struct *f, int n_lines)
 	char buf[BUFFER_SIZE];
 	struct stat finfo;
 
+	dprintf("  Opening file: %s\n", f->name);
 	fd = open(f->name, O_RDONLY);
 	if (fd < 0) {
 		perror("open()");
@@ -122,7 +131,10 @@ static int tail_file(struct file_struct *f, int n_lines)
 
 	f->st_size = finfo.st_size;
 
-	offset = lines_to_offset(fd, f->st_size, n_lines);
+	if (mode == M_LINES)
+		offset = lines_to_offset(fd, f->st_size, n_lines);
+	else
+		offset = bytes_to_offset(fd, f->st_size, n_lines);
 
 	if (verbose)
 		write_header(f->name);
@@ -156,7 +168,7 @@ static int watch_files(struct file_struct *f, int n_files)
 
 	for (i = 0; i < n_files; i++) {
 		f[i].i_watch = inotify_add_watch(ifd, f[i].name,
-							IN_MODIFY|IN_DELETE_SELF|IN_MOVE_SELF|IN_UNMOUNT);
+						IN_MODIFY|IN_DELETE_SELF|IN_MOVE_SELF|IN_UNMOUNT);
 		dprintf("  Watch (%d) added to '%s' (%d)\n", f[i].i_watch, f[i].name, i);
 	}
 
@@ -226,6 +238,7 @@ static int watch_files(struct file_struct *f, int n_files)
 			}
 			if (inev->mask & IN_MOVE_SELF) {
 				dprintf("  File '%s' moved.\n", fil->name);
+				/* TODO: Try to follow file/fd */
 				return -1;
 			}
 			if (inev->mask & IN_UNMOUNT) {
@@ -244,7 +257,7 @@ int main(int argc, char **argv)
 	int i, opt, ret = 0;
 	int n_files = 0;
 	int n_lines = DEFAULT_N_LINES;
-	short forever = 0;
+	char forever = 0, mode = M_LINES;
 	char **filenames;
 	struct file_struct *files;
 
@@ -253,6 +266,12 @@ int main(int argc, char **argv)
 
 	for (opt = 1; (opt < argc) && (argv[opt][0] == '-'); opt++) {
 		switch (argv[opt][1]) {
+		case 'c':
+			mode = M_BYTES;
+			n_lines = strtoul(argv[++opt], NULL, 0);
+			if (n_lines < 0)
+				n_lines = 0;
+			break;
                 case 'f':
 			forever = 1;
 			break;
@@ -287,7 +306,7 @@ int main(int argc, char **argv)
 	files = malloc(n_files * sizeof(struct file_struct));
 	for (i = 0; i < n_files; i++) {
 		files[i].name = filenames[i];
-		ret &= tail_file(&files[i], n_lines);
+		ret &= tail_file(&files[i], n_lines, mode);
 	}
 
 	if (forever)
