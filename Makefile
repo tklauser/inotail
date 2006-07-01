@@ -4,17 +4,17 @@ BINDIR	= ${prefix}/bin
 DESTDIR	=
 
 CC := gcc
-CFLAGS := -Wall -D_USE_SOURCE
-
 INSTALL := install
+
+CFLAGS := -g -Wall -D_USE_SOURCE
 
 DEBUG = false
 
 ifeq ($(strip $(DEBUG)),true)
-	CFLAGS  += -g -DDEBUG
+	CFLAGS  += -DDEBUG
 endif
 
-PROGRAMS := inotail inotail-old inotify-watchdir #simpletail
+PROGRAMS := inotail #inotail-old inotify-watchdir simpletail
 
 all: $(PROGRAMS)
 
@@ -24,7 +24,7 @@ inotail-old: inotail-old.o
 
 inotify-watchdir: inotify-watchdir.o
 
-#simpletail: simpletail.o
+simpletail: simpletail.o
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
