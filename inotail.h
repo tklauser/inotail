@@ -1,9 +1,6 @@
 #ifndef _INOTAIL_H
 #define _INOTAIL_H
 
-#include <limits.h>
-#include <stdlib.h>
-
 /* Number of items to tail. */
 #define DEFAULT_N_LINES 10
 
