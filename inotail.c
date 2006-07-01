@@ -104,7 +104,7 @@ static off_t lines_to_offset(int fd, int file_size, unsigned int n_lines)
 	return offset;
 }
 
-static off_t bytes_to_offset(int fd, int file_size, unsigned int n_lines)
+static inline off_t bytes_to_offset(int fd, int file_size, unsigned int n_lines)
 {
 	return (file_size - n_lines);
 }
