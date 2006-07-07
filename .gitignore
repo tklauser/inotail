@@ -1,1 +1,2 @@
-test.log
+*.o
+cscope.out
