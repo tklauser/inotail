@@ -1,11 +1,11 @@
+VERSION = 0.1
+
 # Paths
 prefix	= $(HOME)
-BINDIR	= ${prefix}/bin
+BINDIR	= $(prefix)/bin
 DESTDIR	=
 
 CC := gcc
-INSTALL := install
-
 CFLAGS := -g -Wall -D_USE_SOURCE
 
 DEBUG = false
@@ -14,24 +14,28 @@ ifeq ($(strip $(DEBUG)),true)
 	CFLAGS  += -DDEBUG
 endif
 
-PROGRAMS := inotail #inotail-old inotify-watchdir simpletail
+PROGRAMS := inotail inotail-old inotify-watchdir
 
-all: $(PROGRAMS)
-
+all: inotail
 inotail: inotail.o
-
 inotail-old: inotail-old.o
-
 inotify-watchdir: inotify-watchdir.o
-
-simpletail: simpletail.o
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 install: inotail
-	${INSTALL} -m 775 inotail ${DESTDIR}${BINDIR}
+	install -m 775 inotail $(DESTDIR)$(BINDIR)
+
+cscope:
+	cscope -b
+
+release:
+	git-tar-tree HEAD inotail-$(VERSION) | gzip -9v > inotail-$(VERSION).tar.gz
+	git-tar-tree HEAD inotail-$(VERSION) | bzip2 -9v > inotail-$(VERSION).tar.bz2
 
 clean:
 	rm -f *.o
 	rm -f $(PROGRAMS)
+	rm -f cscope.out
+	rm -f *.bz2 *.gz
