@@ -54,7 +54,7 @@ static void write_header(const char *filename)
 {
 	static unsigned short first_file = 1;
 
-	fprintf (stdout, "%s==> %s <==\n", (first_file ? "" : "\n"), filename);
+	fprintf(stdout, "%s==> %s <==\n", (first_file ? "" : "\n"), filename);
 	first_file = 0;
 }
 
@@ -104,11 +104,6 @@ static off_t lines_to_offset(int fd, int file_size, unsigned int n_lines)
 	return offset;
 }
 
-static inline off_t bytes_to_offset(int fd, int file_size, unsigned int n_lines)
-{
-	return (file_size - n_lines);
-}
-
 static int tail_file(struct file_struct *f, int n_lines, char mode)
 {
 	int fd;
@@ -117,7 +112,6 @@ static int tail_file(struct file_struct *f, int n_lines, char mode)
 	char buf[BUFFER_SIZE];
 	struct stat finfo;
 
-	dprintf("  Opening file: %s\n", f->name);
 	fd = open(f->name, O_RDONLY);
 	if (fd < 0) {
 		perror("open()");
@@ -133,8 +127,8 @@ static int tail_file(struct file_struct *f, int n_lines, char mode)
 
 	if (mode == M_LINES)
 		offset = lines_to_offset(fd, f->st_size, n_lines);
-	else
-		offset = bytes_to_offset(fd, f->st_size, n_lines);
+	else /* Bytewise tail */
+		offset = f->st_size - n_lines;
 
 	if (verbose)
 		write_header(f->name);
@@ -161,9 +155,8 @@ static int watch_files(struct file_struct *f, int n_files)
 
 	ifd = inotify_init();
 	if (ifd < 0) {
-		fprintf(stderr, "Your kernel does not support inotify.\n");
-		perror("inotify_init()");
-		exit(-2);
+		fprintf(stderr, "Inotify is not supported by the kernel you're currently running.\n");
+		exit(EXIT_FAILURE);
 	}
 
 	for (i = 0; i < n_files; i++) {
@@ -233,16 +226,16 @@ static int watch_files(struct file_struct *f, int n_files)
 			}
 
 			if (inev->mask & IN_DELETE_SELF) {
-				dprintf("  File '%s' deleted.\n", fil->name);
+				fprintf(stderr, "File '%s' deleted.\n", fil->name);
 				return -1;
 			}
 			if (inev->mask & IN_MOVE_SELF) {
-				dprintf("  File '%s' moved.\n", fil->name);
+				fprintf(stderr, "File '%s' moved.\n", fil->name);
 				/* TODO: Try to follow file/fd */
 				return -1;
 			}
 			if (inev->mask & IN_UNMOUNT) {
-				dprintf("  Device containing file '%s' unmounted.\n", fil->name);
+				fprintf(stderr, "Device containing file '%s' unmounted.\n", fil->name);
 				return -1;
 			}
 
