@@ -31,11 +31,10 @@ cscope:
 	cscope -b
 
 release:
-	git-tar-tree HEAD inotail-$(VERSION) | gzip -9v > inotail-$(VERSION).tar.gz
-	git-tar-tree HEAD inotail-$(VERSION) | bzip2 -9v > inotail-$(VERSION).tar.bz2
+	git-tar-tree HEAD inotail-$(VERSION) | gzip -9v > ../inotail-$(VERSION).tar.gz
+	git-tar-tree HEAD inotail-$(VERSION) | bzip2 -9v > ../inotail-$(VERSION).tar.bz2
 
 clean:
 	rm -f *.o
 	rm -f $(PROGRAMS)
 	rm -f cscope.out
-	rm -f *.bz2 *.gz
