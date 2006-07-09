@@ -23,14 +23,14 @@
 
 #define _GNU_SOURCE
 
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
-#include <errno.h>
 #include <string.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <errno.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 
 #include "inotify.h"
 #include "inotify-syscalls.h"
@@ -42,7 +42,7 @@
 #define BUFFER_SIZE 4096
 
 /* Print header with filename before tailing the file? */
-static short verbose = 0;
+static char verbose = 0;
 
 static void usage(void)
 {
