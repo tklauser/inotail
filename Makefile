@@ -6,12 +6,12 @@ BINDIR	= $(prefix)/bin
 DESTDIR	=
 
 CC := gcc
-CFLAGS := -g -Wall -D_USE_SOURCE
+CFLAGS := -Wall -D_USE_SOURCE
 
 DEBUG = false
 
 ifeq ($(strip $(DEBUG)),true)
-	CFLAGS  += -DDEBUG
+	CFLAGS  += -g -DDEBUG
 endif
 
 PROGRAMS := inotail inotail-old inotify-watchdir
