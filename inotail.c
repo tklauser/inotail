@@ -37,6 +37,7 @@
 
 #include "inotail.h"
 
+#define PROGRAM_NAME "inotail"
 #define VERSION "0.1"
 
 #define BUFFER_SIZE 4096
@@ -44,10 +45,16 @@
 /* Print header with filename before tailing the file? */
 static char verbose = 0;
 
-static void usage(void)
+static void usage(int status)
 {
-	fprintf(stderr, "usage: simpletail [-f] [-n <nr-lines>] <file>\n");
-	exit(EXIT_FAILURE);
+	fprintf(stderr, "Usage: %s [OPTION]... [FILE]...\n\n", PROGRAM_NAME);
+	fprintf(stderr, "  -c N    output the last N bytes\n");
+	fprintf(stderr, "  -f      output as the file grows (that's were %s differs from pure tail)\n", PROGRAM_NAME);
+	fprintf(stderr, "  -n N    output the last N lines (default: %d)\n", DEFAULT_N_LINES);
+	fprintf(stderr, "  -v      always output headers giving file names\n");
+	fprintf(stderr, "  -V      Show %s version\n", PROGRAM_NAME);
+
+	exit(status);
 }
 
 static void write_header(const char *filename)
@@ -254,9 +261,6 @@ int main(int argc, char **argv)
 	char **filenames;
 	struct file_struct *files;
 
-	if (argc < 2)
-		usage();
-
 	for (opt = 1; (opt < argc) && (argv[opt][0] == '-'); opt++) {
 		switch (argv[opt][1]) {
 		case 'c':
@@ -277,12 +281,12 @@ int main(int argc, char **argv)
 			verbose = 1;
 			break;
 		case 'V':
-			fprintf(stderr, "inotail %s\n", VERSION);
+			fprintf(stderr, "%s %s\n", PROGRAM_NAME, VERSION);
 			return 0;
 		case 'h':
-                default:
-			usage();
-			break;
+			usage(EXIT_SUCCESS);
+		default:
+			usage(EXIT_FAILURE);
                 }
         }
 
@@ -292,8 +296,8 @@ int main(int argc, char **argv)
 		filenames = argv + opt;
 	} else {
 		/* For now, reading from stdin will be implemented later (tm) */
-		usage();
-		return -1;
+		/* XXX: This is not like GNU tail behaves! */
+		usage(EXIT_FAILURE);
 	}
 
 	files = malloc(n_files * sizeof(struct file_struct));
