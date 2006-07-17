@@ -1,2 +1,7 @@
+# binary files
 *.o
+inotail
+inotify-watchdir
+
+# other
 cscope.out
