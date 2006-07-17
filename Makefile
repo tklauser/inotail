@@ -1,3 +1,5 @@
+# Makefile for inotail
+
 VERSION = 0.1
 
 # Paths
@@ -6,15 +8,17 @@ BINDIR	= $(prefix)/bin
 DESTDIR	=
 
 CC := gcc
-CFLAGS := -Wall -D_USE_SOURCE
+CFLAGS := -Wall -pipe -D_USE_SOURCE -DVERSION="\"$(VERSION)\""
+WARN := -Wstrict-prototypes -Wsign-compare -Wshadow \
+	-Wchar-subscripts -Wmissing-declarations -Wnested-externs \
+	-Wpointer-arith -Wcast-align -Wsign-compare -Wmissing-prototypes
+CFLAGS += $(WARN)
 
+# Compile with 'make DEBUG=true' to enable debugging
 DEBUG = false
-
 ifeq ($(strip $(DEBUG)),true)
 	CFLAGS  += -g -DDEBUG
 endif
-
-PROGRAMS := inotail inotail-old inotify-watchdir
 
 all: inotail
 inotail: inotail.o
