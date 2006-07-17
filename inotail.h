@@ -11,23 +11,10 @@ enum { M_LINES, M_BYTES };
 struct file_struct {
 	char	*name;		/* Name of file (or '-' for stdin) */
 	int 	fd;		/* File descriptor (or -1 if file is not open */
-	int 	ignore:1;	/* Ignore file? */
 	off_t	st_size;	/* File size */
 
-	int i_watch;		/* Inotify watch associated with file_struct */
+	int	i_watch;	/* Inotify watch associated with file_struct */
 };
-
-/*
-struct option const long_options[] = {
-	{"lines", required_argument, NULL, 'n'},
-	{"quiet", no_argument, NULL, 'q'},
-	{"silent", no_argument, NULL, 'q'},
-	{"verbose", no_argument, NULL, 'v'},
-	{"help", no_argument, NULL, 'h'},
-	{"version", no_argument, NULL, 'V'},
-	{NULL, 0, NULL, 0}
-};
-*/
 
 #ifdef DEBUG
 #define dprintf(fmt, args...) fprintf(stderr, fmt, ##args)
