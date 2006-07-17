@@ -38,7 +38,6 @@
 #include "inotail.h"
 
 #define PROGRAM_NAME "inotail"
-#define VERSION "0.1"
 
 #define BUFFER_SIZE 4096
 
@@ -51,8 +50,9 @@ static void usage(int status)
 	fprintf(stderr, "  -c N    output the last N bytes\n");
 	fprintf(stderr, "  -f      output as the file grows (that's were %s differs from pure tail)\n", PROGRAM_NAME);
 	fprintf(stderr, "  -n N    output the last N lines (default: %d)\n", DEFAULT_N_LINES);
-	fprintf(stderr, "  -v      always output headers giving file names\n");
-	fprintf(stderr, "  -V      Show %s version\n", PROGRAM_NAME);
+	fprintf(stderr, "  -v      Output headers with file names\n");
+	fprintf(stderr, "  -h      Show this help and exit\n");
+	fprintf(stderr, "  -V      Show %s version and exit\n", PROGRAM_NAME);
 
 	exit(status);
 }
@@ -185,7 +185,7 @@ static int watch_files(struct file_struct *f, int n_files)
 
 			/* Which file has produced the event? */
 			for (i = 0; i < n_files; i++) {
-				if (!f[i].ignore && f[i].i_watch == inev->wd) {
+				if (f[i].i_watch == inev->wd) {
 					fil = &f[i];
 					break;
 				}
