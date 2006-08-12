@@ -9,11 +9,13 @@ enum { M_LINES, M_BYTES };
 
 /* Every tailed file is represented as a file_struct */
 struct file_struct {
-	char	*name;		/* Name of file (or '-' for stdin) */
-	int 	fd;		/* File descriptor (or -1 if file is not open */
-	off_t	st_size;	/* File size */
+	char *name;		/* Name of file (or '-' for stdin) */
+	int fd;			/* File descriptor (or -1 if file is not open */
+	off_t st_size;		/* File size */
 
-	int	i_watch;	/* Inotify watch associated with file_struct */
+	unsigned ignore;	/* Wheter to ignore the file in further processing */
+
+	int i_watch;		/* Inotify watch associated with file_struct */
 };
 
 #ifdef DEBUG
