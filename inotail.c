@@ -57,6 +57,14 @@ static void usage(int status)
 	exit(status);
 }
 
+static void setup_file(struct file_struct *f)
+{
+	f->fd = -1;
+	f->st_size = 0;
+	f->ignore = 0;
+	f->i_watch = -1;
+}
+
 static void write_header(const char *filename)
 {
 	static unsigned short first_file = 1;
@@ -159,7 +167,7 @@ static int tail_file(struct file_struct *f, int n_lines, char mode)
 
 static int watch_files(struct file_struct *f, int n_files)
 {
-	int ifd, i;
+	int ifd, i, n_ignored = 0;
 	off_t offset;
 	struct inotify_event *inev;
 	char buf[sizeof(struct inotify_event) * 32];	/* Let's hope we don't get more than 32 events at a time */
@@ -171,14 +179,16 @@ static int watch_files(struct file_struct *f, int n_files)
 	}
 
 	for (i = 0; i < n_files; i++) {
-		f[i].i_watch = inotify_add_watch(ifd, f[i].name,
+		if (!f[i].ignore)
+			f[i].i_watch = inotify_add_watch(ifd, f[i].name,
 						IN_MODIFY|IN_DELETE_SELF|IN_MOVE_SELF|IN_UNMOUNT);
-		dprintf("  Watch (%d) added to '%s' (%d)\n", f[i].i_watch, f[i].name, i);
+		else
+			n_ignored++;
 	}
 
 	memset(&buf, 0, sizeof(buf));
 
-	while (1) {
+	while (n_ignored < n_files) {
 		int len;
 
 		len = read(ifd, buf, sizeof(buf));
@@ -189,11 +199,13 @@ static int watch_files(struct file_struct *f, int n_files)
 
 			/* Which file has produced the event? */
 			for (i = 0; i < n_files; i++) {
-				if (f[i].i_watch == inev->wd) {
+				if (!f[i].ignore && f[i].i_watch == inev->wd) {
 					fil = &f[i];
 					break;
 				}
 			}
+
+			/* XXX: Is it possible that no file in the list produced the event? */
 
 			if (inev->mask & IN_MODIFY) {
 				int block_size;
@@ -207,13 +219,15 @@ static int watch_files(struct file_struct *f, int n_files)
 
 				fil->fd = open(fil->name, O_RDONLY);
 				if (fil->fd < 0) {
+					fil->ignore = 1;
+					n_ignored++;
 					fprintf(stderr, "Error: Could not open file '%s' (%s)\n", f->name, strerror(errno));
-					return -1;
 				}
 
 				if (fstat(fil->fd, &finfo) < 0) {
+					fil->ignore = 1;
+					n_ignored++;
 					fprintf(stderr, "Error: Could not stat file '%s' (%s)\n", f->name, strerror(errno));
-					return -1;
 				}
 
 				fil->st_size = finfo.st_size;
@@ -242,23 +256,28 @@ static int watch_files(struct file_struct *f, int n_files)
 			}
 
 			if (inev->mask & IN_DELETE_SELF) {
+				fil->ignore = 1;
+				n_ignored++;
 				fprintf(stderr, "File '%s' deleted.\n", fil->name);
-				return -1;
 			}
 			if (inev->mask & IN_MOVE_SELF) {
+				fil->ignore = 1;
+				n_ignored++;
 				fprintf(stderr, "File '%s' moved.\n", fil->name);
 				/* TODO: Try to follow file/fd */
-				return -1;
 			}
 			if (inev->mask & IN_UNMOUNT) {
+				fil->ignore = 1;
+				n_ignored++;
 				fprintf(stderr, "Device containing file '%s' unmounted.\n", fil->name);
-				return -1;
 			}
 
 			len -= sizeof(struct inotify_event) + inev->len;
 			inev = (struct inotify_event *) ((char *) inev + sizeof(struct inotify_event) + inev->len);
 		}
 	}
+
+	return -1;
 }
 
 int main(int argc, char **argv)
@@ -312,6 +331,7 @@ int main(int argc, char **argv)
 	files = malloc(n_files * sizeof(struct file_struct));
 	for (i = 0; i < n_files; i++) {
 		files[i].name = filenames[i];
+		setup_file(&files[i]);
 		ret = tail_file(&files[i], n_lines, mode);
 		if (ret < 0)
 			files[i].ignore = 1;
