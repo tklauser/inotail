@@ -65,11 +65,11 @@ static void write_header(const char *filename)
 	first_file = 0;
 }
 
-static off_t lines_to_offset(int fd, int file_size, unsigned int n_lines)
+static off_t lines_to_offset(struct file_struct *f, unsigned int n_lines)
 {
 	int i;
 	char buf[BUFFER_SIZE];
-	off_t offset = file_size;
+	off_t offset = f->st_size;
 
 	memset(&buf, 0, sizeof(buf));
 
@@ -89,11 +89,13 @@ static off_t lines_to_offset(int fd, int file_size, unsigned int n_lines)
 		/* Start of current block */
 		offset -= block_size;
 
-		lseek(fd, offset, SEEK_SET);
+		lseek(f->fd, offset, SEEK_SET);
 
-		rc = read(fd, &buf, block_size);
-		if (rc < 0)
-			return rc;
+		rc = read(f->fd, &buf, block_size);
+		if (rc < 0) {
+			fprintf(stderr, "Error: Could not read from file '%s' (%s)\n", f->name, strerror(errno));
+			return -1;
+		}
 
 		for (i = block_size; i > 0; i--) {
 			if (buf[i] == '\n') {
@@ -113,42 +115,44 @@ static off_t lines_to_offset(int fd, int file_size, unsigned int n_lines)
 
 static int tail_file(struct file_struct *f, int n_lines, char mode)
 {
-	int fd;
 	ssize_t rc = 0;
 	off_t offset = 0;
 	char buf[BUFFER_SIZE];
 	struct stat finfo;
 
-	fd = open(f->name, O_RDONLY);
-	if (fd < 0) {
-		perror("open()");
+	f->fd = open(f->name, O_RDONLY);
+	if (f->fd < 0) {
+		fprintf(stderr, "Error: Could not open file '%s' (%s)\n", f->name, strerror(errno));
 		return -1;
 	}
 
-	if (fstat(fd, &finfo) < 0) {
-		perror("fstat()");
+	if (fstat(f->fd, &finfo) < 0) {
+		fprintf(stderr, "Error: Could not stat file '%s' (%s)\n", f->name, strerror(errno));
 		return -1;
 	}
 
 	f->st_size = finfo.st_size;
 
 	if (mode == M_LINES)
-		offset = lines_to_offset(fd, f->st_size, n_lines);
+		offset = lines_to_offset(f, n_lines);
 	else /* Bytewise tail */
 		offset = f->st_size - n_lines;
+
+	if (offset < 0)
+		return -1;
 
 	if (verbose)
 		write_header(f->name);
 
-	lseek(fd, offset, SEEK_SET);
+	lseek(f->fd, offset, SEEK_SET);
 
-	while ((rc = read(fd, &buf, BUFFER_SIZE)) != 0) {
+	while ((rc = read(f->fd, &buf, BUFFER_SIZE)) != 0) {
 		dprintf("  f->st_size - offset: %lu\n", f->st_size - offset);
 		dprintf("  rc:                  %d\n", rc);
 		write(STDOUT_FILENO, buf, (size_t) rc);
 	}
 
-	close(fd);
+	close(f->fd);
 
 	return 0;
 }
@@ -158,11 +162,11 @@ static int watch_files(struct file_struct *f, int n_files)
 	int ifd, i;
 	off_t offset;
 	struct inotify_event *inev;
-	char buf[BUFFER_SIZE];
+	char buf[sizeof(struct inotify_event) * 32];	/* Let's hope we don't get more than 32 events at a time */
 
 	ifd = inotify_init();
 	if (ifd < 0) {
-		fprintf(stderr, "Inotify is not supported by the kernel you're currently running.\n");
+		fprintf(stderr, "Error: Inotify is not supported by the kernel you're currently running.\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -192,7 +196,7 @@ static int watch_files(struct file_struct *f, int n_files)
 			}
 
 			if (inev->mask & IN_MODIFY) {
-				int ffd, block_size;
+				int block_size;
 				char fbuf[BUFFER_SIZE];
 				struct stat finfo;
 
@@ -201,9 +205,14 @@ static int watch_files(struct file_struct *f, int n_files)
 				dprintf("  File '%s' modified.\n", fil->name);
 				dprintf("  offset: %lu.\n", offset);
 
-				ffd = open(fil->name, O_RDONLY);
-				if (fstat(ffd, &finfo) < 0) {
-					perror("fstat()");
+				fil->fd = open(fil->name, O_RDONLY);
+				if (fil->fd < 0) {
+					fprintf(stderr, "Error: Could not open file '%s' (%s)\n", f->name, strerror(errno));
+					return -1;
+				}
+
+				if (fstat(fil->fd, &finfo) < 0) {
+					fprintf(stderr, "Error: Could not stat file '%s' (%s)\n", f->name, strerror(errno));
 					return -1;
 				}
 
@@ -224,12 +233,12 @@ static int watch_files(struct file_struct *f, int n_files)
 					write_header(fil->name);
 
 				memset(&fbuf, 0, sizeof(fbuf));
-				lseek(ffd, offset, SEEK_SET);
-				while (read(ffd, &fbuf, block_size) != 0) {
+				lseek(fil->fd, offset, SEEK_SET);
+				while (read(fil->fd, &fbuf, block_size) != 0) {
 					write(STDOUT_FILENO, fbuf, block_size);
 				}
 
-				close(ffd);
+				close(fil->fd);
 			}
 
 			if (inev->mask & IN_DELETE_SELF) {
@@ -303,7 +312,9 @@ int main(int argc, char **argv)
 	files = malloc(n_files * sizeof(struct file_struct));
 	for (i = 0; i < n_files; i++) {
 		files[i].name = filenames[i];
-		ret &= tail_file(&files[i], n_lines, mode);
+		ret = tail_file(&files[i], n_lines, mode);
+		if (ret < 0)
+			files[i].ignore = 1;
 	}
 
 	if (forever)
