@@ -199,7 +199,7 @@ static int watch_files(struct file_struct *f, int n_files)
 
 			/* Which file has produced the event? */
 			for (i = 0; i < n_files; i++) {
-				if (!f[i].ignore && f[i].i_watch == inev->wd) {
+				if (!f[i].ignore && f[i].fd >= 0 && f[i].i_watch == inev->wd) {
 					fil = &f[i];
 					break;
 				}
