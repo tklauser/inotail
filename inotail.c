@@ -38,6 +38,9 @@
 #include "inotail.h"
 
 #define PROGRAM_NAME "inotail"
+#ifndef VERSION
+#define VERSION "undef"
+#endif
 
 #define BUFFER_SIZE 4096
 
@@ -81,11 +84,8 @@ static off_t lines_to_offset(struct file_struct *f, unsigned int n_lines)
 
 	memset(&buf, 0, sizeof(buf));
 
-	/* Negative offsets don't make sense here */
-	if (offset < 0)
-		offset = 0;
-
-	n_lines += 1;	/* We also count the last \n */
+	/* We also count the last \n */
+	n_lines += 1;
 
 	while (offset > 0 && n_lines > 0) {
 		int rc;
@@ -206,7 +206,6 @@ static int watch_files(struct file_struct *f, int n_files)
 			}
 
 			/* XXX: Is it possible that no file in the list produced the event? */
-
 			if (inev->mask & IN_MODIFY) {
 				int block_size;
 				char fbuf[BUFFER_SIZE];
