@@ -20,12 +20,12 @@ ifeq ($(strip $(DEBUG)),true)
 	CFLAGS  += -g -DDEBUG
 endif
 
-all: inotail
+all: Makefile inotail
 inotail: inotail.o
 inotail-old: inotail-old.o
 inotify-watchdir: inotify-watchdir.o
 
-%.o: %.c
+%.o: %.c %.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
 install: inotail
@@ -39,6 +39,6 @@ release:
 	git-tar-tree HEAD inotail-$(VERSION) | bzip2 -9v > ../inotail-$(VERSION).tar.bz2
 
 clean:
+	rm -f inotail
 	rm -f *.o
-	rm -f $(PROGRAMS)
 	rm -f cscope.out
