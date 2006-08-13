@@ -22,8 +22,6 @@ endif
 
 all: Makefile inotail
 inotail: inotail.o
-inotail-old: inotail-old.o
-inotify-watchdir: inotify-watchdir.o
 
 %.o: %.c %.h
 	$(CC) $(CFLAGS) -c $< -o $@
