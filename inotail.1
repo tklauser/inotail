@@ -1,0 +1,51 @@
+'\" t
+.\" ** The above line should force tbl to be a preprocessor **
+.\" Man page for inotail
+.\"
+.\" Copyright (c) 2006 Tobias Klauser <tklauser@distanz.ch>
+.\"
+.\" You may distribute under the terms of the GNU General Public
+.\" License as specified in the file COPYING that comes with the
+.\" inotail distribution.
+
+.pc
+.TH INOTAIL 1 "2006-08-13" "" "Inotify enhanced tail"
+.SH NAME
+inotail \- A fast and light version of tail using inotify
+.SH SYNOPSIS
+.B inotail
+[OPTION]... [FILE]...
+.SH DESCRIPTION
+.B inotail
+is a drop-in replacement for the 'tail' program found in the base
+installation of every Linux/UNIX system. It makes use of the Inotify
+infrastructure in recent version of the Linux kernel to speed up tailing files
+in the follow mode (the '-f' option). Currently inotail is not fully compatible
+to neither POSIX or GNU tail but might be in the future.
+.SH OPTIONS
+.TP
+.B \-c \fIN\fR
+print the last N bytes
+.TP
+.B \-f
+keep the file(s) open and print appended data as the file grows
+.TP
+.B \-n \fIN\fR
+print the last N lines (defaults to 10)
+.TP
+.B \-v
+Output headers with file names
+.TP
+.B \-h
+Show help and exit
+.TP
+.B \-V
+Show inotail version and exit
+.SH AUTHOR
+.PP
+Written by Tobias Klauser
+<tklauser@distanz.ch>
+.SH SEE ALSO
+.PP
+.BR tail(1),
+.BR inotify(7)
