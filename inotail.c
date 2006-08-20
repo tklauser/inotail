@@ -37,9 +37,9 @@
 
 #include "inotail.h"
 
-#define PROGRAM_NAME "inotail"
+#define PROGRAM_NAME	"inotail"
 #ifndef VERSION
-#define VERSION "undef"
+# define VERSION 	"undef"
 #endif
 
 #define BUFFER_SIZE 4096
@@ -213,20 +213,21 @@ static int watch_files(struct file_struct *f, int n_files)
 
 				offset = fil->st_size;
 
-				dprintf("  File '%s' modified.\n", fil->name);
-				dprintf("  offset: %lu.\n", offset);
+				dprintf("  File '%s' modified, offset: %lu.\n", fil->name, offset);
 
 				fil->fd = open(fil->name, O_RDONLY);
 				if (fil->fd < 0) {
 					fil->ignore = 1;
 					n_ignored++;
 					fprintf(stderr, "Error: Could not open file '%s' (%s)\n", f->name, strerror(errno));
+					continue;
 				}
 
 				if (fstat(fil->fd, &finfo) < 0) {
 					fil->ignore = 1;
 					n_ignored++;
 					fprintf(stderr, "Error: Could not stat file '%s' (%s)\n", f->name, strerror(errno));
+					continue;
 				}
 
 				fil->st_size = finfo.st_size;
@@ -252,20 +253,16 @@ static int watch_files(struct file_struct *f, int n_files)
 				}
 
 				close(fil->fd);
-			}
-
-			if (inev->mask & IN_DELETE_SELF) {
+			} else if (inev->mask & IN_DELETE_SELF) {
 				fil->ignore = 1;
 				n_ignored++;
 				fprintf(stderr, "File '%s' deleted.\n", fil->name);
-			}
-			if (inev->mask & IN_MOVE_SELF) {
+			} else if (inev->mask & IN_MOVE_SELF) {
 				fil->ignore = 1;
 				n_ignored++;
 				fprintf(stderr, "File '%s' moved.\n", fil->name);
 				/* TODO: Try to follow file/fd */
-			}
-			if (inev->mask & IN_UNMOUNT) {
+			} else if (inev->mask & IN_UNMOUNT) {
 				fil->ignore = 1;
 				n_ignored++;
 				fprintf(stderr, "Device containing file '%s' unmounted.\n", fil->name);
