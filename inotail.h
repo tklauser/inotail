@@ -19,9 +19,9 @@ struct file_struct {
 };
 
 #ifdef DEBUG
-#define dprintf(fmt, args...) fprintf(stderr, fmt, ##args)
+# define dprintf(fmt, args...) fprintf(stderr, fmt, ##args)
 #else
-#define dprintf(fmt, args...)
+# define dprintf(fmt, args...)
 #endif /* DEBUG */
 
 #endif /* _INOTAIL_H */
