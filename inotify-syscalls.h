@@ -32,15 +32,43 @@
 # define __NR_inotify_add_watch	152
 # define __NR_inotify_rm_watch	156
 #elif defined (__arm__)
-# define __NR_inotify_init	316
-# define __NR_inotify_add_watch	317
-# define __NR_inotify_rm_watch	318
+# define __NR_OABI_SYSCALL_BASE	0x900000
+# if defined(__thumb__) || defined(__ARM_EABI__)
+#  define __NR_SYSCALL_BASE	0
+# else
+#  define __NR_SYSCALL_BASE	__NR_OABI_SYSCALL_BASE
+# endif
+# define __NR_inotify_init	(__NR_SYSCALL_BASE + 316)
+# define __NR_inotify_add_watch	(__NR_SYSCALL_BASE + 317)
+# define __NR_inotify_rm_watch	(__NR_SYSCALL_BASE + 318)
 #elif defined (__sh__)
 # define __NR_inotify_init	290
 # define __NR_inotify_add_watch	291
 # define __NR_inotify_rm_watch	292
+#elif defined (__hppa__)
+# define __NR_inotify_init	269
+# define __NR_inotify_add_watch	270
+# define __NR_inotify_rm_watch	271
+#elif defined (__mips__)
+# include <sgidefs.h>
+# if _MIPS_SIM == _MIPS_SIM_ABI32
+#  define __NR_Linux			4000
+#  define __NR_inotify_init		(__NR_Linux + 284)
+#  define __NR_inotify_add_watch	(__NR_Linux + 285)
+#  define __NR_inotify_rm_watch		(__NR_Linux + 286)
+# elif _MIPS_SIM == _MIPS_SIM_ABI64
+#  define __NR_Linux			5000
+#  define __NR_inotify_init		(__NR_Linux + 243)
+#  define __NR_inotify_add_watch	(__NR_Linux + 244)
+#  define __NR_inotify_rm_watch		(__NR_Linux + 245)
+# elif _MIPS_SIM == _MIPS_SIM_NABI32
+#  define __NR_Linux			6000
+#  define __NR_inotify_init		(__NR_Linux + 247)
+#  define __NR_inotify_add_watch	(__NR_Linux + 248)
+#  define __NR_inotify_rm_watch		(__NR_Linux + 249)
+# endif
 #else
-# error "Unsupported architecture!"
+# error "inotify not supported on this architecture!"
 #endif
 
 static inline int inotify_init (void)
