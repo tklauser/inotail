@@ -136,6 +136,7 @@ static int tail_file(struct file_struct *f, int n_lines, char mode)
 
 	if (fstat(f->fd, &finfo) < 0) {
 		fprintf(stderr, "Error: Could not stat file '%s' (%s)\n", f->name, strerror(errno));
+		close(f->fd);
 		return -1;
 	}
 
@@ -227,6 +228,7 @@ static int watch_files(struct file_struct *f, int n_files)
 					fil->ignore = 1;
 					n_ignored++;
 					fprintf(stderr, "Error: Could not stat file '%s' (%s)\n", f->name, strerror(errno));
+					close(fil->fd);
 					continue;
 				}
 
@@ -247,10 +249,10 @@ static int watch_files(struct file_struct *f, int n_files)
 					write_header(fil->name);
 
 				memset(&fbuf, 0, sizeof(fbuf));
+
 				lseek(fil->fd, offset, SEEK_SET);
-				while (read(fil->fd, &fbuf, block_size) != 0) {
+				while (read(fil->fd, &fbuf, block_size) != 0)
 					write(STDOUT_FILENO, fbuf, block_size);
-				}
 
 				close(fil->fd);
 			} else if (inev->mask & IN_DELETE_SELF) {
