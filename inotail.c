@@ -51,11 +51,11 @@ static void usage(int status)
 {
 	fprintf(stderr, "Usage: %s [OPTION]... [FILE]...\n\n", PROGRAM_NAME);
 	fprintf(stderr, "  -c N    output the last N bytes\n");
-	fprintf(stderr, "  -f      output as the file grows (that's were %s differs from pure tail)\n", PROGRAM_NAME);
+	fprintf(stderr, "  -f      output as the file grows\n");
 	fprintf(stderr, "  -n N    output the last N lines (default: %d)\n", DEFAULT_N_LINES);
-	fprintf(stderr, "  -v      Output headers with file names\n");
-	fprintf(stderr, "  -h      Show this help and exit\n");
-	fprintf(stderr, "  -V      Show %s version and exit\n", PROGRAM_NAME);
+	fprintf(stderr, "  -v      print headers with file names\n");
+	fprintf(stderr, "  -h      show this help and exit\n");
+	fprintf(stderr, "  -V      show version and exit\n");
 
 	exit(status);
 }
