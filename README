@@ -2,8 +2,8 @@
 o===============================o
 
 inotail is a drop-in replacement for the 'tail' program found in the base
-installation of every Linux/UNIX system. It makes use of the Inotify
-infrastructure in recent version of the Linux kernel to speed up tailing files
+installation of every Linux/UNIX system. It makes use of the inotify
+infrastructure in recent versions of the Linux kernel to speed up tailing files
 in the follow mode (the '-f' option). Currently inotail is not fully compatible
 to neither POSIX or GNU tail but might be in the future.
 
