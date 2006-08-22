@@ -3,9 +3,7 @@
 VERSION = 0.1
 
 # Paths
-prefix	= $(HOME)
-BINDIR	= $(prefix)/bin
-MANDIR	= $(prefix)/share/man
+prefix	= /usr
 DESTDIR	=
 
 CC := gcc
@@ -28,8 +26,8 @@ inotail: inotail.o
 	$(CC) $(CFLAGS) -c $< -o $@
 
 install: inotail
-	install -m 775 -D inotail $(DESTDIR)$(BINDIR)
-	install -m 644 -D inotail.1 $(DESTDIR)$(MANDIR)/man1/inotail.1
+	install -m 775 -D inotail $(DESTDIR)$(prefix)/bin/inotail
+	install -m 644 -D inotail.1 $(DESTDIR)$(prefix)/share/man1/inotail.1
 
 cscope:
 	cscope -b
