@@ -27,7 +27,7 @@ inotail: inotail.o
 
 install: inotail
 	install -m 775 -D inotail $(DESTDIR)$(prefix)/bin/inotail
-	install -m 644 -D inotail.1 $(DESTDIR)$(prefix)/share/man1/inotail.1
+	install -m 644 -D inotail.1 $(DESTDIR)$(prefix)/share/man/man1/inotail.1
 
 cscope:
 	cscope -b
