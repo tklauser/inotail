@@ -110,8 +110,7 @@ static off_t lines_to_offset(struct file_struct *f, unsigned int n_lines)
 				n_lines--;
 
 				if (n_lines == 0) {
-					/* We don't want the first \n */
-					offset += i + 1;
+					offset += i + 1; /* We don't want the first \n */
 					break;
 				}
 			}
@@ -121,6 +120,20 @@ static off_t lines_to_offset(struct file_struct *f, unsigned int n_lines)
 	return offset;
 }
 
+static int bytes_to_offset(struct file_struct *f, int n_lines)
+{
+	int ret = f->st_size - n_lines;
+
+	return (ret < 0 ? 0 : ret);
+}
+
+/* We will just tail everything here */
+static int tail_pipe(struct file_struct *f)
+{
+	dprintf("  Trying to tail from '%s'\n", f->name);
+	return 0;
+}
+
 static int tail_file(struct file_struct *f, int n_lines, char mode)
 {
 	ssize_t rc = 0;
@@ -128,10 +141,14 @@ static int tail_file(struct file_struct *f, int n_lines, char mode)
 	char buf[BUFFER_SIZE];
 	struct stat finfo;
 
-	f->fd = open(f->name, O_RDONLY);
-	if (f->fd < 0) {
-		fprintf(stderr, "Error: Could not open file '%s' (%s)\n", f->name, strerror(errno));
-		return -1;
+	if (strncmp(f->name, "-", 1) == 0)
+		f->fd = STDIN_FILENO;
+	else {
+		f->fd = open(f->name, O_RDONLY);
+		if (f->fd < 0) {
+			fprintf(stderr, "Error: Could not open file '%s' (%s)\n", f->name, strerror(errno));
+			return -1;
+		}
 	}
 
 	if (fstat(f->fd, &finfo) < 0) {
@@ -140,13 +157,18 @@ static int tail_file(struct file_struct *f, int n_lines, char mode)
 		return -1;
 	}
 
+	/* We cannot seek on these */
+	if (!S_ISREG(finfo.st_mode) || f->fd == STDIN_FILENO)
+		return tail_pipe(f);
+
 	f->st_size = finfo.st_size;
 
 	if (mode == M_LINES)
 		offset = lines_to_offset(f, n_lines);
-	else /* Bytewise tail */
-		offset = f->st_size - n_lines;
+	else /* Bytewise tail, n_lines is number of bytes here */
+		offset = bytes_to_offset(f, n_lines);
 
+	/* We only get negative offsets on errors */
 	if (offset < 0)
 		return -1;
 
@@ -155,13 +177,14 @@ static int tail_file(struct file_struct *f, int n_lines, char mode)
 
 	lseek(f->fd, offset, SEEK_SET);
 
-	while ((rc = read(f->fd, &buf, BUFFER_SIZE)) != 0) {
+	while ((rc = read(f->fd, &buf, BUFFER_SIZE)) > 0) {
 		dprintf("  f->st_size - offset: %lu\n", f->st_size - offset);
 		dprintf("  rc:                  %d\n", rc);
 		write(STDOUT_FILENO, buf, (size_t) rc);
 	}
 
-	close(f->fd);
+	if (close(f->fd) < 0)
+		fprintf(stderr, "Error: Could not close file '%s' (%s)\n", f->name, strerror(errno));
 
 	return 0;
 }
@@ -321,9 +344,19 @@ int main(int argc, char **argv)
 		n_files = argc - opt;
 		filenames = argv + opt;
 	} else {
-		/* For now, reading from stdin will be implemented later (tm) */
-		/* XXX: This is not like GNU tail behaves! */
-		usage(EXIT_FAILURE);
+		/* It must be stdin then */
+		static char *dummy_stdin = "-";
+		n_files++;
+		filenames = &dummy_stdin;
+
+		/* POSIX says that -f is ignored if no file operand is
+		   specified and standard input is a pipe. */
+		if (forever) {
+			struct stat finfo;
+			if (fstat(STDIN_FILENO, &finfo) == 0
+					&& (S_ISFIFO(finfo.st_mode) || S_ISSOCK(finfo.st_mode)))
+				forever = 0;
+		}
 	}
 
 	files = malloc(n_files * sizeof(struct file_struct));
