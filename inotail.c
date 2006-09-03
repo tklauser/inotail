@@ -320,6 +320,7 @@ int main(int argc, char **argv)
 			forever = 1;
 			break;
 		case 'n':
+			mode = M_LINES;
 			n_lines = strtoul(argv[++opt], NULL, 0);
 			if (n_lines < 0)
 				n_lines = 0;
