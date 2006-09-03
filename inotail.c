@@ -5,7 +5,7 @@
  *
  * Copyright (C) 2005-2006, Tobias Klauser <tklauser@distanz.ch>
  *
- * The idea and some code were taken from turbotail.
+ * The idea was taken from turbotail.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License as published by the Free Software
@@ -178,8 +178,6 @@ static int tail_file(struct file_struct *f, int n_lines, char mode)
 	lseek(f->fd, offset, SEEK_SET);
 
 	while ((rc = read(f->fd, &buf, BUFFER_SIZE)) > 0) {
-		dprintf("  f->st_size - offset: %lu\n", f->st_size - offset);
-		dprintf("  rc:                  %d\n", rc);
 		write(STDOUT_FILENO, buf, (size_t) rc);
 	}
 
