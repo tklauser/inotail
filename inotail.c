@@ -74,7 +74,6 @@ static void write_header(const char *filename)
 
 static off_t lines_to_offset(struct file_struct *f, unsigned int n_lines)
 {
-	int i;
 	char buf[BUFFER_SIZE];
 	off_t offset = f->st_size;
 
@@ -84,7 +83,7 @@ static off_t lines_to_offset(struct file_struct *f, unsigned int n_lines)
 	n_lines += 1;
 
 	while (offset > 0 && n_lines > 0) {
-		int rc;
+		int i, rc;
 		int block_size = BUFFER_SIZE; /* Size of the current block we're reading */
 
 		if (offset < BUFFER_SIZE)
@@ -173,9 +172,8 @@ static int tail_file(struct file_struct *f, int n_lines, char mode)
 
 	lseek(f->fd, offset, SEEK_SET);
 
-	while ((rc = read(f->fd, &buf, BUFFER_SIZE)) > 0) {
+	while ((rc = read(f->fd, &buf, BUFFER_SIZE)) > 0)
 		write(STDOUT_FILENO, buf, (size_t) rc);
-	}
 
 	if (close(f->fd) < 0)
 		fprintf(stderr, "Error: Could not close file '%s' (%s)\n", f->name, strerror(errno));
@@ -291,6 +289,8 @@ static int watch_files(struct file_struct *f, int n_files)
 			inev = (struct inotify_event *) ((char *) inev + sizeof(struct inotify_event) + inev->len);
 		}
 	}
+
+	close(ifd);
 
 	return -1;
 }
