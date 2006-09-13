@@ -223,11 +223,9 @@ static int watch_files(struct file_struct *f, int n_files)
 
 			/* XXX: Is it possible that no file in the list produced the event? */
 			if (inev->mask & IN_MODIFY) {
-				int block_size;
+				int rc;
 				char fbuf[BUFFER_SIZE];
 				struct stat finfo;
-
-				offset = fil->st_size;
 
 				fil->fd = open(fil->name, O_RDONLY);
 				if (fil->fd < 0) {
@@ -245,18 +243,8 @@ static int watch_files(struct file_struct *f, int n_files)
 					continue;
 				}
 
+				offset = fil->st_size;
 				fil->st_size = finfo.st_size;
-				block_size = fil->st_size - offset;
-
-				if (block_size < 0)
-					block_size = 0;
-
-				/* XXX: Dirty hack for now to make sure
-				 * block_size doesn't get bigger than
-				 * BUFFER_SIZE
-				 */
-				if (block_size > BUFFER_SIZE)
-					block_size = BUFFER_SIZE;
 
 				if (verbose)
 					write_header(fil->name);
@@ -264,8 +252,8 @@ static int watch_files(struct file_struct *f, int n_files)
 				memset(&fbuf, 0, sizeof(fbuf));
 
 				lseek(fil->fd, offset, SEEK_SET);
-				while (read(fil->fd, &fbuf, block_size) != 0)
-					write(STDOUT_FILENO, fbuf, block_size);
+				while ((rc = read(fil->fd, &fbuf, BUFFER_SIZE)) != 0)
+					write(STDOUT_FILENO, fbuf, rc);
 
 				close(fil->fd);
 			} else if (inev->mask & IN_DELETE_SELF) {
