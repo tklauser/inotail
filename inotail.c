@@ -37,11 +37,7 @@
 
 #include "inotail.h"
 
-#define PROGRAM_NAME	"inotail"
-#ifndef VERSION
-# define VERSION 	"undef"
-#endif
-
+#define PROGRAM_NAME "inotail"
 #define BUFFER_SIZE 4096
 
 /* Print header with filename before tailing the file? */
