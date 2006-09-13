@@ -229,8 +229,6 @@ static int watch_files(struct file_struct *f, int n_files)
 
 				offset = fil->st_size;
 
-				dprintf("  File '%s' modified, offset: %lu.\n", fil->name, offset);
-
 				fil->fd = open(fil->name, O_RDONLY);
 				if (fil->fd < 0) {
 					fil->ignore = 1;
