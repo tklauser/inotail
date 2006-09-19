@@ -64,11 +64,16 @@ static void setup_file(struct file_struct *f)
 	f->i_watch = -1;
 }
 
-static void write_header(const char *filename)
+static char *pretty_name(char *filename)
+{
+	return (strncmp(filename, "-", 1) == 0) ? "standard input" : filename;
+}
+
+static void write_header(char *filename)
 {
 	static unsigned short first_file = 1;
 
-	fprintf(stdout, "%s==> %s <==\n", (first_file ? "" : "\n"), filename);
+	fprintf(stdout, "%s==> %s <==\n", (first_file ? "" : "\n"), pretty_name(filename));
 	first_file = 0;
 }
 
@@ -126,6 +131,8 @@ static int bytes_to_offset(struct file_struct *f, int n_lines)
 static int tail_pipe(struct file_struct *f)
 {
 	dprintf("  Trying to tail from '%s'\n", f->name);
+	if (verbose)
+		write_header(f->name);
 	return 0;
 }
 
