@@ -29,6 +29,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <getopt.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 
@@ -43,15 +44,25 @@
 /* Print header with filename before tailing the file? */
 static char verbose = 0;
 
-static void usage(int status)
+static const struct option long_opts[] = {
+	{"bytes", required_argument, NULL, 'c'},
+	{"follow", optional_argument, NULL, 'f'},
+	{"lines", required_argument, NULL, 'n'},
+	{"verbose", no_argument, NULL, 'v'},
+	{"help", no_argument, NULL, 'h'},
+	{"version", no_argument, NULL, 'V'},
+	{NULL, 0, NULL, 0}
+};
+
+static void usage(const int status)
 {
 	fprintf(stderr, "Usage: %s [OPTION]... [FILE]...\n\n", PROGRAM_NAME);
-	fprintf(stderr, "  -c N    output the last N bytes\n");
-	fprintf(stderr, "  -f      output as the file grows\n");
-	fprintf(stderr, "  -n N    output the last N lines (default: %d)\n", DEFAULT_N_LINES);
-	fprintf(stderr, "  -v      print headers with file names\n");
-	fprintf(stderr, "  -h      show this help and exit\n");
-	fprintf(stderr, "  -V      show version and exit\n");
+	fprintf(stderr, "  -c N, --bytes=N    output the last N bytes\n");
+	fprintf(stderr, "  -f,   --follow     output as the file grows\n");
+	fprintf(stderr, "  -n N, --lines=N    output the last N lines (default: %d)\n", DEFAULT_N_LINES);
+	fprintf(stderr, "  -v,   --verbose    print headers with file names\n");
+	fprintf(stderr, "  -h,   --help       show this help and exit\n");
+	fprintf(stderr, "  -V,   --version    show version and exit\n");
 
 	exit(status);
 }
@@ -130,7 +141,6 @@ static int bytes_to_offset(struct file_struct *f, int n_lines)
 /* We will just tail everything here */
 static int tail_pipe(struct file_struct *f)
 {
-	dprintf("  Trying to tail from '%s'\n", f->name);
 	if (verbose)
 		write_header(f->name);
 	return 0;
@@ -290,29 +300,25 @@ static int watch_files(struct file_struct *f, int n_files)
 
 int main(int argc, char **argv)
 {
-	int i, opt, ret = 0;
+	int i, c, ret = 0;
 	int n_files = 0;
 	int n_lines = DEFAULT_N_LINES;
 	char forever = 0, mode = M_LINES;
 	char **filenames;
 	struct file_struct *files;
 
-	for (opt = 1; (opt < argc) && (argv[opt][0] == '-'); opt++) {
-		switch (argv[opt][1]) {
+	while ((c = getopt_long(argc, argv, "c:n:fvVh", long_opts, NULL)) != -1) {
+		switch (c) {
 		case 'c':
-			mode = M_BYTES;
-			n_lines = strtoul(argv[++opt], NULL, 0);
+		case 'n':
+			if (c == 'c')
+				mode = M_BYTES;
+			n_lines = strtoul(optarg, NULL, 0);
 			if (n_lines < 0)
 				n_lines = 0;
 			break;
                 case 'f':
 			forever = 1;
-			break;
-		case 'n':
-			mode = M_LINES;
-			n_lines = strtoul(argv[++opt], NULL, 0);
-			if (n_lines < 0)
-				n_lines = 0;
 			break;
 		case 'v':
 			verbose = 1;
@@ -324,13 +330,13 @@ int main(int argc, char **argv)
 			usage(EXIT_SUCCESS);
 		default:
 			usage(EXIT_FAILURE);
-                }
-        }
+		}
+	}
 
 	/* Do we have some files to read from? */
-	if (opt < argc) {
-		n_files = argc - opt;
-		filenames = argv + opt;
+	if (optind < argc) {
+		n_files = argc - optind;
+		filenames = argv + optind;
 	} else {
 		/* It must be stdin then */
 		static char *dummy_stdin = "-";
