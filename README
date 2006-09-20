@@ -1,17 +1,20 @@
  inotail - inotify enhanced tail
 o===============================o
 
-inotail is a drop-in replacement for the 'tail' program found in the base
-installation of every Linux/UNIX system. It makes use of the inotify
-infrastructure in recent versions of the Linux kernel to speed up tailing files
-in the follow mode (the '-f' option). Currently inotail is not fully compatible
-to neither POSIX or GNU tail but might be in the future.
+inotail is a replacement for the 'tail' program found in the base installation
+of every Linux/UNIX system. It makes use of the inotify infrastructure in recent
+versions of the Linux kernel to speed up tailing files in the follow mode (the
+'-f' option). Standard tail polls the file every second by default while inotail
+listens to special events sent by the kernel through the inotify API to
+determine whether a file needs to be reread.
+
+Currently inotail is not fully compatible to neither POSIX or GNU tail but might
+be in the future.
 
 Requirements
 ------------
 - Linux kernel 2.6.13 or higher with CONFIG_INOTIFY enabled
-- Future versions will require a version of the glibc shipping with inotify
-  support
+- Standard C Library (tested with GNU libc but might work with others too)
 
 License
 -------
