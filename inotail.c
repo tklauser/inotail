@@ -138,11 +138,18 @@ static int bytes_to_offset(struct file_struct *f, int n_lines)
 	return (ret < 0 ? 0 : ret);
 }
 
-/* We will just tail everything here */
 static int tail_pipe(struct file_struct *f)
 {
+	int rc;
+	char buf[BUFFER_SIZE];
+
 	if (verbose)
 		write_header(f->name);
+
+	/* We will just tail everything here */
+	while ((rc = read(f->fd, &buf, BUFFER_SIZE)) > 0)
+		write(STDOUT_FILENO, buf, (size_t) rc);
+
 	return 0;
 }
 
