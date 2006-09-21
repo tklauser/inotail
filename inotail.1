@@ -17,13 +17,17 @@ inotail \- A fast and light version of tail using inotify
 [OPTION]... [FILE]...
 .SH DESCRIPTION
 .B inotail
-is a drop-in replacement for the 'tail' program found in the base
-installation of every Linux/UNIX system. It makes use of the inotify
-infrastructure in recent versions of the Linux kernel to speed up tailing files
-in the follow mode (the '\-f' option). Currently inotail is not fully compatible
-to neither POSIX or GNU tail but might be in the future. \fINote:\fR inotail
-will not work on systems running kernels without Inotify. To enable Inotify ,
-please set CONFIG_INOTIFY=y in your kernel configuration and recompile it.
+is a replacement for the 'tail' program found in the base installation of every
+Linux/UNIX system. It makes use of the inotify infrastructure in recent versions
+of the Linux kernel to speed up tailing files in the follow mode (the '\-f'
+option). Standard tail polls the file every second by default while inotail
+listens to special events sent by the kernel through the inotify API to
+determine whether a file needs to be reread. \fINote:\fR inotail will not work
+on systems running kernels without Inotify. To enable Inotify , please set
+CONFIG_INOTIFY=y in your kernel configuration and recompile it.
+.PP
+Currently inotail is not fully compatible to neither POSIX or GNU tail but might
+be in the future.
 .SH OPTIONS
 .TP
 .B \-c \fIN\fR, \fB\-\-bytes\fR=\fIN\fR
