@@ -1,4 +1,5 @@
 # Makefile for inotail
+# Copyright (C) 2006, Tobias Klauser <tklauser@distanz.ch>
 
 VERSION = 0.1
 
