@@ -1,3 +1,12 @@
+/*
+ * Inotify syscall numbers
+ * Taken from the linux kernel source tree
+ *
+ * Licensed under the terms of the GNU General Public License Version 2.
+ *
+ * Copyright (c) 2006 Tobias Klauser <tklauser@distanz.ch>
+ */
+
 #ifndef _LINUX_INOTIFY_SYSCALLS_H
 #define _LINUX_INOTIFY_SYSCALLS_H
 
