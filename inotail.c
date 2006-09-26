@@ -245,8 +245,7 @@ static int watch_files(struct file_struct *f, int n_files)
 				}
 			}
 
-			/* Very unlikely! */
-			if (!fil)
+			if (unlikely(!fil))
 				break;
 
 			if (inev->mask & IN_MODIFY) {

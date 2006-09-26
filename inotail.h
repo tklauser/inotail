@@ -24,4 +24,7 @@ struct file_struct {
 # define dprintf(fmt, args...)
 #endif /* DEBUG */
 
+/* Taken from linux kernel source tree */
+#define unlikely(x) __builtin_expect(!!(x), 0)
+
 #endif /* _INOTAIL_H */
