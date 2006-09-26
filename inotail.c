@@ -235,7 +235,7 @@ static int watch_files(struct file_struct *f, int n_files)
 		inev = (struct inotify_event *) &buf;
 
 		while (len > 0) {
-			struct file_struct *fil;
+			struct file_struct *fil = NULL;
 
 			/* Which file has produced the event? */
 			for (i = 0; i < n_files; i++) {
@@ -245,7 +245,10 @@ static int watch_files(struct file_struct *f, int n_files)
 				}
 			}
 
-			/* XXX: Is it possible that no file in the list produced the event? */
+			/* Very unlikely! */
+			if (!fil)
+				break;
+
 			if (inev->mask & IN_MODIFY) {
 				int rc;
 				char fbuf[BUFFER_SIZE];
