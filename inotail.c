@@ -205,10 +205,61 @@ static int tail_file(struct file_struct *f, int n_lines, char mode)
 	return 0;
 }
 
+static int handle_inotify_event(struct inotify_event *inev, struct file_struct *fil, int n_ignored)
+{
+	off_t offset;
+
+	if (inev->mask & IN_MODIFY) {
+		int rc;
+		char fbuf[BUFFER_SIZE];
+		struct stat finfo;
+
+		fil->fd = open(fil->name, O_RDONLY);
+		if (fil->fd < 0) {
+			fprintf(stderr, "Error: Could not open file '%s' (%s)\n", fil->name, strerror(errno));
+			goto ignore;
+		}
+
+		if (fstat(fil->fd, &finfo) < 0) {
+			fprintf(stderr, "Error: Could not stat file '%s' (%s)\n", fil->name, strerror(errno));
+			close(fil->fd);
+			goto ignore;
+		}
+
+		offset = fil->st_size;
+		fil->st_size = finfo.st_size;
+
+		if (verbose)
+			write_header(fil->name);
+
+		memset(&fbuf, 0, sizeof(fbuf));
+
+		lseek(fil->fd, offset, SEEK_SET);
+		while ((rc = read(fil->fd, &fbuf, BUFFER_SIZE)) != 0)
+			write(STDOUT_FILENO, fbuf, rc);
+
+		close(fil->fd);
+
+		return n_ignored;
+	} else if (inev->mask & IN_DELETE_SELF) {
+		fprintf(stderr, "File '%s' deleted.\n", fil->name);
+	} else if (inev->mask & IN_MOVE_SELF) {
+		/* TODO: Try to follow file/fd */
+		fprintf(stderr, "File '%s' moved.\n", fil->name);
+	} else if (inev->mask & IN_UNMOUNT) {
+		fprintf(stderr, "Device containing file '%s' unmounted.\n", fil->name);
+	}
+
+ignore:
+	fil->ignore = 1;
+	n_ignored++;
+
+	return n_ignored;
+}
+
 static int watch_files(struct file_struct *f, int n_files)
 {
 	int ifd, i, n_ignored = 0;
-	off_t offset;
 	struct inotify_event *inev;
 	char buf[sizeof(struct inotify_event) * 32];	/* Let's hope we don't get more than 32 events at a time */
 
@@ -248,55 +299,7 @@ static int watch_files(struct file_struct *f, int n_files)
 			if (unlikely(!fil))
 				break;
 
-			if (inev->mask & IN_MODIFY) {
-				int rc;
-				char fbuf[BUFFER_SIZE];
-				struct stat finfo;
-
-				fil->fd = open(fil->name, O_RDONLY);
-				if (fil->fd < 0) {
-					fil->ignore = 1;
-					n_ignored++;
-					fprintf(stderr, "Error: Could not open file '%s' (%s)\n", f->name, strerror(errno));
-					continue;
-				}
-
-				if (fstat(fil->fd, &finfo) < 0) {
-					fil->ignore = 1;
-					n_ignored++;
-					fprintf(stderr, "Error: Could not stat file '%s' (%s)\n", f->name, strerror(errno));
-					close(fil->fd);
-					continue;
-				}
-
-				offset = fil->st_size;
-				fil->st_size = finfo.st_size;
-
-				if (verbose)
-					write_header(fil->name);
-
-				memset(&fbuf, 0, sizeof(fbuf));
-
-				lseek(fil->fd, offset, SEEK_SET);
-				while ((rc = read(fil->fd, &fbuf, BUFFER_SIZE)) != 0)
-					write(STDOUT_FILENO, fbuf, rc);
-
-				close(fil->fd);
-			} else if (inev->mask & IN_DELETE_SELF) {
-				fil->ignore = 1;
-				n_ignored++;
-				fprintf(stderr, "File '%s' deleted.\n", fil->name);
-			} else if (inev->mask & IN_MOVE_SELF) {
-				fil->ignore = 1;
-				n_ignored++;
-				fprintf(stderr, "File '%s' moved.\n", fil->name);
-				/* TODO: Try to follow file/fd */
-			} else if (inev->mask & IN_UNMOUNT) {
-				fil->ignore = 1;
-				n_ignored++;
-				fprintf(stderr, "Device containing file '%s' unmounted.\n", fil->name);
-			}
-
+			n_ignored = handle_inotify_event(inev, fil, n_ignored);
 			len -= sizeof(struct inotify_event) + inev->len;
 			inev = (struct inotify_event *) ((char *) inev + sizeof(struct inotify_event) + inev->len);
 		}
