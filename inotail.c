@@ -41,6 +41,10 @@
 #define PROGRAM_NAME "inotail"
 #define BUFFER_SIZE 4096
 
+/* (ino)tail works on these file types */
+#define IS_TAILABLE(mode) \
+	(S_ISREG(mode) || S_ISFIFO(mode) || S_ISSOCK(mode) || S_ISCHR(mode))
+
 /* Print header with filename before tailing the file? */
 static char verbose = 0;
 
@@ -150,7 +154,7 @@ static int tail_pipe(struct file_struct *f)
 	while ((rc = read(f->fd, &buf, BUFFER_SIZE)) > 0)
 		write(STDOUT_FILENO, buf, (size_t) rc);
 
-	return 0;
+	return rc;
 }
 
 static int tail_file(struct file_struct *f, int n_lines, char mode)
@@ -176,8 +180,13 @@ static int tail_file(struct file_struct *f, int n_lines, char mode)
 		return -1;
 	}
 
+	if (!IS_TAILABLE(finfo.st_mode)) {
+		fprintf(stderr, "Error: '%s' of unsupported file type\n", f->name);
+		return -1;
+	}
+
 	/* We cannot seek on these */
-	if (!S_ISREG(finfo.st_mode) || f->fd == STDIN_FILENO)
+	if (S_ISFIFO(finfo.st_mode) || S_ISSOCK(finfo.st_mode) || f->fd == STDIN_FILENO)
 		return tail_pipe(f);
 
 	f->st_size = finfo.st_size;
@@ -307,7 +316,7 @@ static int watch_files(struct file_struct *f, int n_files)
 
 	close(ifd);
 
-	return -1;
+	return n_ignored;
 }
 
 int main(int argc, char **argv)
