@@ -40,4 +40,4 @@ release:
 clean:
 	rm -f inotail
 	rm -f *.o
-	rm -f cscope.out
+	rm -f cscope.*
