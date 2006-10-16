@@ -79,7 +79,7 @@ static void setup_file(struct file_struct *f)
 	f->i_watch = -1;
 }
 
-static char *pretty_name(char *filename)
+static inline char *pretty_name(char *filename)
 {
 	return (strncmp(filename, "-", 1) == 0) ? "standard input" : filename;
 }
