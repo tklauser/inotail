@@ -48,6 +48,7 @@
 /* Print header with filename before tailing the file? */
 static char verbose = 0;
 
+/* Command line options */
 static const struct option long_opts[] = {
 	{"bytes", required_argument, NULL, 'c'},
 	{"follow", optional_argument, NULL, 'f'},
@@ -159,7 +160,8 @@ static int tail_pipe(struct file_struct *f)
 
 static int tail_file(struct file_struct *f, int n_lines, char mode)
 {
-	ssize_t rc = 0;
+	int ret = -1;
+	ssize_t bytes_read = 0;
 	off_t offset = 0;
 	char buf[BUFFER_SIZE];
 	struct stat finfo;
@@ -176,13 +178,12 @@ static int tail_file(struct file_struct *f, int n_lines, char mode)
 
 	if (fstat(f->fd, &finfo) < 0) {
 		fprintf(stderr, "Error: Could not stat file '%s' (%s)\n", f->name, strerror(errno));
-		close(f->fd);
-		return -1;
+		goto out;
 	}
 
 	if (!IS_TAILABLE(finfo.st_mode)) {
 		fprintf(stderr, "Error: '%s' of unsupported file type\n", f->name);
-		return -1;
+		goto out;
 	}
 
 	/* We cannot seek on these */
@@ -198,20 +199,24 @@ static int tail_file(struct file_struct *f, int n_lines, char mode)
 
 	/* We only get negative offsets on errors */
 	if (offset < 0)
-		return -1;
+		goto out;
 
 	if (verbose)
 		write_header(f->name);
 
 	lseek(f->fd, offset, SEEK_SET);
 
-	while ((rc = read(f->fd, &buf, BUFFER_SIZE)) > 0)
-		write(STDOUT_FILENO, buf, (size_t) rc);
+	while ((bytes_read = read(f->fd, &buf, BUFFER_SIZE)) > 0)
+		write(STDOUT_FILENO, buf, (size_t) bytes_read);
 
-	if (close(f->fd) < 0)
+	ret = 0;
+out:
+	if (close(f->fd) < 0) {
 		fprintf(stderr, "Error: Could not close file '%s' (%s)\n", f->name, strerror(errno));
+		ret = -1;
+	}
 
-	return 0;
+	return ret;
 }
 
 static int handle_inotify_event(struct inotify_event *inev, struct file_struct *fil, int n_ignored)
