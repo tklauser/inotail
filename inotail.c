@@ -328,7 +328,7 @@ int main(int argc, char **argv)
 {
 	int i, c, ret = 0;
 	int n_files = 0;
-	int n_lines = DEFAULT_N_LINES;
+	int n_units = DEFAULT_N_LINES;
 	char forever = 0, mode = M_LINES;
 	char **filenames;
 	struct file_struct *files;
@@ -339,9 +339,9 @@ int main(int argc, char **argv)
 		case 'n':
 			if (c == 'c')
 				mode = M_BYTES;
-			n_lines = strtoul(optarg, NULL, 0);
-			if (n_lines < 0)
-				n_lines = 0;
+			n_units = strtoul(optarg, NULL, 0);
+			if (n_units < 0)
+				n_units = 0;
 			break;
                 case 'f':
 			forever = 1;
@@ -383,7 +383,7 @@ int main(int argc, char **argv)
 	for (i = 0; i < n_files; i++) {
 		files[i].name = filenames[i];
 		setup_file(&files[i]);
-		ret = tail_file(&files[i], n_lines, mode);
+		ret = tail_file(&files[i], n_units, mode);
 		if (ret < 0)
 			files[i].ignore = 1;
 	}
