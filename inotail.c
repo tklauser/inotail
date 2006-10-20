@@ -328,8 +328,8 @@ int main(int argc, char **argv)
 {
 	int i, c, ret = 0;
 	int n_files = 0;
-	unsigned int n_units = DEFAULT_N_LINES;
-	char forever = 0, mode = M_LINES;
+	int n_units = DEFAULT_N_LINES;
+	char forever = 0, mode = M_LINES, relative = R_END;
 	char **filenames;
 	struct file_struct *files;
 
@@ -339,6 +339,10 @@ int main(int argc, char **argv)
 		case 'n':
 			if (c == 'c')
 				mode = M_BYTES;
+			if (*optarg == '+')
+				relative = R_BEGIN;
+			else if (*optarg == '-')
+				optarg++;
 			n_units = strtoul(optarg, NULL, 0);
 			if (n_units < 0)
 				n_units = 0;

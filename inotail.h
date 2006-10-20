@@ -7,6 +7,9 @@
 /* tail modes */
 enum { M_LINES, M_BYTES };
 
+/* tail unit relative to the end ('-' or none) or the beginning ('+' of the file) */
+enum { R_END, R_BEGIN };
+
 /* Every tailed file is represented as a file_struct */
 struct file_struct {
 	char *name;		/* Name of file (or '-' for stdin) */
