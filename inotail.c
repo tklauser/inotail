@@ -136,9 +136,9 @@ static off_t lines_to_offset(struct file_struct *f, unsigned int n_lines)
 	return offset;
 }
 
-static int bytes_to_offset(struct file_struct *f, int n_lines)
+static int bytes_to_offset(struct file_struct *f, unsigned int n_bytes)
 {
-	int ret = f->st_size - n_lines;
+	int ret = f->st_size - n_bytes;
 
 	return (ret < 0 ? 0 : ret);
 }
@@ -158,7 +158,7 @@ static int tail_pipe(struct file_struct *f)
 	return rc;
 }
 
-static int tail_file(struct file_struct *f, int n_lines, char mode)
+static int tail_file(struct file_struct *f, unsigned int n_units, char mode)
 {
 	int ret = -1;
 	ssize_t bytes_read = 0;
@@ -193,9 +193,9 @@ static int tail_file(struct file_struct *f, int n_lines, char mode)
 	f->st_size = finfo.st_size;
 
 	if (mode == M_LINES)
-		offset = lines_to_offset(f, n_lines);
+		offset = lines_to_offset(f, n_units);
 	else /* Bytewise tail, n_lines is number of bytes here */
-		offset = bytes_to_offset(f, n_lines);
+		offset = bytes_to_offset(f, n_units);
 
 	/* We only get negative offsets on errors */
 	if (offset < 0)
@@ -328,7 +328,7 @@ int main(int argc, char **argv)
 {
 	int i, c, ret = 0;
 	int n_files = 0;
-	int n_units = DEFAULT_N_LINES;
+	unsigned int n_units = DEFAULT_N_LINES;
 	char forever = 0, mode = M_LINES;
 	char **filenames;
 	struct file_struct *files;
