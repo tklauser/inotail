@@ -1,6 +1,6 @@
 /*
  * Inode based directory notification for Linux
- * Taken from the linux kernel source tree
+ * Taken from the Linux kernel source tree
  *
  * Licensed under the terms of the GNU General Public License Version 2.
  *

@@ -28,9 +28,9 @@ struct file_struct {
 #endif /* DEBUG */
 
 #ifdef __GNUC__
-# define unlikely(x) __builtin_expect(!!(x), 0)	/* Taken from linux kernel source */
+# define unlikely(x) __builtin_expect(!!(x), 0)
 #else
 # define unlikely(x) (x)
-#endif
+#endif /* __GNUC__ */
 
 #endif /* _INOTAIL_H */

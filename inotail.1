@@ -23,7 +23,7 @@ of the Linux kernel to speed up tailing files in the follow mode (the '\-f'
 option). Standard tail polls the file every second by default while inotail
 listens to special events sent by the kernel through the inotify API to
 determine whether a file needs to be reread. \fINote:\fR inotail will not work
-on systems running kernels without Inotify. To enable Inotify , please set
+on systems running a kernel without inotify. To enable inotify, please set
 CONFIG_INOTIFY=y in your kernel configuration and recompile it.
 .PP
 Currently inotail is not fully compatible to neither POSIX or GNU tail but might

@@ -22,7 +22,7 @@ inotail is licensed under the terms of the GNU General Public License Version 2.
 You can find the full text in the file LICENSE in the source tree of inotail.
 
 The files inotify.h and inotify-syscalls.h were taken from the source tree of
-the linux kernel and slightly altered. Both are licensed under the terms of the
+the Linux kernel and slightly altered. Both are licensed under the terms of the
 GNU General Public License v2.
 
 -- Tobias Klauser <tklauser@distanz.ch>

@@ -1,7 +1,7 @@
 /*
  * inotail.c
- * A fast implementation of tail which uses the inotify-API present in
- * recent Linux Kernels.
+ * A fast implementation of tail which uses the inotify API present in
+ * recent versions of the Linux kernel.
  *
  * Copyright (C) 2005-2006, Tobias Klauser <tklauser@distanz.ch>
  *
