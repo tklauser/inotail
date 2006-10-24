@@ -49,7 +49,7 @@
 static char verbose = 0;
 
 /* Tailing relative to begin or end of file */
-static char relative = R_END;
+static char from_begin = 0;
 
 /* Command line options */
 static const struct option long_opts[] = {
@@ -103,7 +103,7 @@ static off_t lines_to_offset(struct file_struct *f, unsigned int n_lines)
 
 	memset(&buf, 0, sizeof(buf));
 
-	if (relative == R_END)
+	if (!from_begin)
 		n_lines += 1;	/* We also count the last \n */
 
 	while (offset > 0 && n_lines > 0) {
@@ -139,11 +139,9 @@ static off_t lines_to_offset(struct file_struct *f, unsigned int n_lines)
 	return offset;
 }
 
-static off_t bytes_to_offset(struct file_struct *f, unsigned int n_bytes)
+static inline off_t bytes_to_offset(struct file_struct *f, unsigned int n_bytes)
 {
-	int ret = f->st_size - n_bytes;
-
-	return (ret < 0 ? 0 : ret);
+	return from_begin ? ((off_t) n_bytes - 1) : (f->st_size - n_bytes);
 }
 
 static int tail_pipe(struct file_struct *f)
@@ -343,7 +341,7 @@ int main(int argc, char **argv)
 			if (c == 'c')
 				mode = M_BYTES;
 			if (*optarg == '+')
-				relative = R_BEGIN;
+				from_begin = 1;
 			else if (*optarg == '-')
 				optarg++;
 			n_units = strtoul(optarg, NULL, 0);
@@ -387,6 +385,11 @@ int main(int argc, char **argv)
 	}
 
 	files = malloc(n_files * sizeof(struct file_struct));
+	if (!files) {
+		fprintf(stderr, "Error: Not enough memory (%s)\n", strerror(errno));
+		exit(EXIT_FAILURE);
+	}
+
 	for (i = 0; i < n_files; i++) {
 		files[i].name = filenames[i];
 		setup_file(&files[i]);
