@@ -48,6 +48,9 @@
 /* Print header with filename before tailing the file? */
 static char verbose = 0;
 
+/* Tailing relative to begin or end of file */
+static char relative = R_END;
+
 /* Command line options */
 static const struct option long_opts[] = {
 	{"bytes", required_argument, NULL, 'c'},
@@ -100,12 +103,12 @@ static off_t lines_to_offset(struct file_struct *f, unsigned int n_lines)
 
 	memset(&buf, 0, sizeof(buf));
 
-	/* We also count the last \n */
-	n_lines += 1;
+	if (relative == R_END)
+		n_lines += 1;	/* We also count the last \n */
 
 	while (offset > 0 && n_lines > 0) {
 		int i, rc;
-		int block_size = BUFFER_SIZE; /* Size of the current block we're reading */
+		int block_size = BUFFER_SIZE;	/* Size of the current block we're reading */
 
 		if (offset < BUFFER_SIZE)
 			block_size = offset;
@@ -136,7 +139,7 @@ static off_t lines_to_offset(struct file_struct *f, unsigned int n_lines)
 	return offset;
 }
 
-static int bytes_to_offset(struct file_struct *f, unsigned int n_bytes)
+static off_t bytes_to_offset(struct file_struct *f, unsigned int n_bytes)
 {
 	int ret = f->st_size - n_bytes;
 
@@ -194,7 +197,7 @@ static int tail_file(struct file_struct *f, unsigned int n_units, char mode)
 
 	if (mode == M_LINES)
 		offset = lines_to_offset(f, n_units);
-	else /* Bytewise tail, n_lines is number of bytes here */
+	else
 		offset = bytes_to_offset(f, n_units);
 
 	/* We only get negative offsets on errors */
@@ -329,7 +332,7 @@ int main(int argc, char **argv)
 	int i, c, ret = 0;
 	int n_files = 0;
 	int n_units = DEFAULT_N_LINES;
-	char forever = 0, mode = M_LINES, relative = R_END;
+	char forever = 0, mode = M_LINES;
 	char **filenames;
 	struct file_struct *files;
 
