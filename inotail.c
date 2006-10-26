@@ -96,15 +96,58 @@ static void write_header(char *filename)
 	first_file = 0;
 }
 
+static off_t lines_to_offset_from_begin(struct file_struct *f, unsigned int n_lines)
+{
+	char buf[BUFFER_SIZE];
+	off_t offset = 0;
+
+	/* tail everything vor 'inotail -n +0' */
+	if (n_lines == 0)
+		return 0;
+
+	memset(&buf, 0, sizeof(buf));
+
+	n_lines--;
+
+	while (offset <= f->st_size && n_lines > 0) {
+		int i, rc;
+		int block_size = BUFFER_SIZE;
+
+		lseek(f->fd, offset, SEEK_SET);
+
+		rc = read(f->fd, &buf, block_size);
+		if (rc < 0) {
+			fprintf(stderr, "Error: Could not read from file '%s' (%s)\n", f->name, strerror(errno));
+			return -1;
+		}
+
+		for (i = 0; i < block_size; i++) {
+			if (buf[i] == '\n') {
+				n_lines--;
+				if (n_lines == 0) {
+					offset += i + 1;
+					return offset;
+				}
+			}
+		}
+
+		offset += block_size;
+	}
+
+	return offset;
+}
+
 static off_t lines_to_offset(struct file_struct *f, unsigned int n_lines)
 {
 	char buf[BUFFER_SIZE];
 	off_t offset = f->st_size;
 
-	memset(&buf, 0, sizeof(buf));
+	if (from_begin)
+		return lines_to_offset_from_begin(f, n_lines);
+	else
+		n_lines++;	/* We also count the last \n */
 
-	if (!from_begin)
-		n_lines += 1;	/* We also count the last \n */
+	memset(&buf, 0, sizeof(buf));
 
 	while (offset > 0 && n_lines > 0) {
 		int i, rc;
@@ -141,7 +184,11 @@ static off_t lines_to_offset(struct file_struct *f, unsigned int n_lines)
 
 static inline off_t bytes_to_offset(struct file_struct *f, unsigned int n_bytes)
 {
-	return from_begin ? ((off_t) n_bytes - 1) : (f->st_size - n_bytes);
+	/* tail everything vor 'inotail -c +0' */
+	if (from_begin && n_bytes == 0)
+		return 0;
+	else
+		return (from_begin ? ((off_t) n_bytes - 1) : (f->st_size - (off_t) n_bytes));
 }
 
 static int tail_pipe(struct file_struct *f)
