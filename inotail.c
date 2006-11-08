@@ -101,13 +101,12 @@ static off_t lines_to_offset_from_begin(struct file_struct *f, unsigned int n_li
 	char buf[BUFFER_SIZE];
 	off_t offset = 0;
 
-	/* tail everything vor 'inotail -n +0' */
+	/* tail everything for 'inotail -n +0' */
 	if (n_lines == 0)
 		return 0;
 
-	memset(&buf, 0, sizeof(buf));
-
 	n_lines--;
+	memset(&buf, 0, sizeof(buf));
 
 	while (offset <= f->st_size && n_lines > 0) {
 		int i, rc;
@@ -144,9 +143,8 @@ static off_t lines_to_offset(struct file_struct *f, unsigned int n_lines)
 
 	if (from_begin)
 		return lines_to_offset_from_begin(f, n_lines);
-	else
-		n_lines++;	/* We also count the last \n */
 
+	n_lines++;	/* We also count the last \n */
 	memset(&buf, 0, sizeof(buf));
 
 	while (offset > 0 && n_lines > 0) {
@@ -184,7 +182,7 @@ static off_t lines_to_offset(struct file_struct *f, unsigned int n_lines)
 
 static inline off_t bytes_to_offset(struct file_struct *f, unsigned int n_bytes)
 {
-	/* tail everything vor 'inotail -c +0' */
+	/* tail everything for 'inotail -c +0' */
 	if (from_begin && n_bytes == 0)
 		return 0;
 	else
@@ -384,9 +382,9 @@ int main(int argc, char **argv)
 	while ((c = getopt_long(argc, argv, "c:n:fvVh", long_opts, NULL)) != -1) {
 		switch (c) {
 		case 'c':
+			mode = M_BYTES;
+			/* fall through */
 		case 'n':
-			if (c == 'c')
-				mode = M_BYTES;
 			if (*optarg == '+')
 				from_begin = 1;
 			else if (*optarg == '-')
