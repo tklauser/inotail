@@ -64,13 +64,16 @@ static const struct option long_opts[] = {
 
 static void usage(const int status)
 {
-	fprintf(stderr, "Usage: %s [OPTION]... [FILE]...\n\n", PROGRAM_NAME);
-	fprintf(stderr, "  -c N, --bytes=N    output the last N bytes\n");
-	fprintf(stderr, "  -f,   --follow     output as the file grows\n");
-	fprintf(stderr, "  -n N, --lines=N    output the last N lines (default: %d)\n", DEFAULT_N_LINES);
-	fprintf(stderr, "  -v,   --verbose    print headers with file names\n");
-	fprintf(stderr, "  -h,   --help       show this help and exit\n");
-	fprintf(stderr, "  -V,   --version    show version and exit\n");
+	fprintf(stderr, "Usage: %s [OPTION]... [FILE]...\n\n"
+			"  -c N, --bytes=N    output the last N bytes\n"
+			"  -f,   --follow     output as the file grows\n"
+			"  -n N, --lines=N    output the last N lines (default: %d)\n"
+			"  -v,   --verbose    print headers with file names\n"
+			"  -h,   --help       show this help and exit\n"
+			"  -V,   --version    show version and exit\n\n"
+			"If the first character of N (the number of bytes or lines) is a `+',\n"
+			"begin printing with the Nth item from the start of each file, otherwise,\n"
+			"print the last N items in the file.\n", PROGRAM_NAME, DEFAULT_N_LINES);
 
 	exit(status);
 }
