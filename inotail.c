@@ -323,8 +323,9 @@ ignore:
 static int watch_files(struct file_struct *f, int n_files)
 {
 	int ifd, i, n_ignored = 0;
+	unsigned buflen = 2 * n_files * sizeof(struct inotify_event);
 	struct inotify_event *inev;
-	char buf[sizeof(struct inotify_event) * 32];	/* Let's hope we don't get more than 32 events at a time */
+	char *buf;
 
 	ifd = inotify_init();
 	if (ifd < 0) {
@@ -340,13 +341,14 @@ static int watch_files(struct file_struct *f, int n_files)
 			n_ignored++;
 	}
 
-	memset(&buf, 0, sizeof(buf));
+	buf = malloc(buflen);
+	memset(buf, 0, buflen);
 
 	while (n_ignored < n_files) {
 		int len;
 
-		len = read(ifd, buf, sizeof(buf));
-		inev = (struct inotify_event *) &buf;
+		len = read(ifd, buf, buflen);
+		inev = (struct inotify_event *) buf;
 
 		while (len > 0) {
 			struct file_struct *fil = NULL;
@@ -368,6 +370,7 @@ static int watch_files(struct file_struct *f, int n_files)
 		}
 	}
 
+	free(buf);
 	close(ifd);
 
 	return n_ignored;
