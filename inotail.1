@@ -11,7 +11,7 @@
 .pc
 .TH INOTAIL 1 "2006-08-13" "" "Inotify enhanced tail"
 .SH NAME
-inotail \- A fast and light version of tail using inotify
+inotail \- A fast and lightweight version of tail using inotify
 .SH SYNOPSIS
 .B inotail
 [OPTION]... [FILE]...
@@ -24,7 +24,7 @@ option). Standard tail polls the file every second by default while inotail
 listens to special events sent by the kernel through the inotify API to
 determine whether a file needs to be reread. \fINote:\fR inotail will not work
 on systems running a kernel without inotify. To enable inotify, please set
-CONFIG_INOTIFY=y in your kernel configuration and recompile it.
+CONFIG_INOTIFY=y in your Linux kernel configuration and recompile it.
 .PP
 Currently inotail is not fully compatible to neither POSIX or GNU tail but might
 be in the future.

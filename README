@@ -18,11 +18,12 @@ Requirements
 
 License
 -------
-inotail is licensed under the terms of the GNU General Public License Version 2.
-You can find the full text in the file LICENSE in the source tree of inotail.
+inotail is licensed under the terms of the GNU General Public License version 2
+or later. You can find the full text in the file LICENSE in the source tree of
+inotail.
 
 The files inotify.h and inotify-syscalls.h were taken from the source tree of
 the Linux kernel and slightly altered. Both are licensed under the terms of the
-GNU General Public License v2.
+GNU General Public License version 2.
 
 -- Tobias Klauser <tklauser@distanz.ch>
