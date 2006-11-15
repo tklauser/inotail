@@ -1,3 +1,9 @@
+/*
+ * Copyright (C) 2005-2006, Tobias Klauser <tklauser@distanz.ch>
+ *
+ * Licensed under the terms of the GNU General Public License; version 2 or later.
+ */
+
 #ifndef _INOTAIL_H
 #define _INOTAIL_H
 
