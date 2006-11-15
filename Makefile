@@ -14,7 +14,7 @@ CC := gcc
 CFLAGS := -Wall -pipe -D_USE_SOURCE -DVERSION="\"$(VERSION)\""
 WARN := -Wstrict-prototypes -Wsign-compare -Wshadow \
 	-Wchar-subscripts -Wmissing-declarations -Wnested-externs \
-	-Wpointer-arith -Wcast-align -Wsign-compare -Wmissing-prototypes
+	-Wpointer-arith -Wcast-align -Wmissing-prototypes
 CFLAGS += $(WARN)
 
 # Compile with 'make DEBUG=true' to enable debugging
