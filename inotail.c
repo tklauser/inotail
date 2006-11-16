@@ -99,6 +99,48 @@ static void write_header(char *filename)
 	first_file = 0;
 }
 
+static off_t lines_to_offset_from_end(struct file_struct *f, unsigned int n_lines)
+{
+	char buf[BUFFER_SIZE];
+	off_t offset = f->st_size;
+
+	n_lines++;	/* We also count the last \n */
+	memset(&buf, 0, sizeof(buf));
+
+	while (offset > 0 && n_lines > 0) {
+		int i, rc;
+		int block_size = BUFFER_SIZE;	/* Size of the current block we're reading */
+
+		if (offset < BUFFER_SIZE)
+			block_size = offset;
+
+		/* Start of current block */
+		offset -= block_size;
+
+		lseek(f->fd, offset, SEEK_SET);
+
+		rc = read(f->fd, &buf, block_size);
+		if (rc < 0) {
+			fprintf(stderr, "Error: Could not read from file '%s' (%s)\n", f->name, strerror(errno));
+			return -1;
+		}
+
+		for (i = block_size; i > 0; i--) {
+			if (buf[i] == '\n') {
+				n_lines--;
+
+				if (n_lines == 0) {
+					offset += i + 1; /* We don't want the first \n */
+					break;
+				}
+			}
+		}
+	}
+
+	return offset;
+
+}
+
 static off_t lines_to_offset_from_begin(struct file_struct *f, unsigned int n_lines)
 {
 	char buf[BUFFER_SIZE];
@@ -141,46 +183,10 @@ static off_t lines_to_offset_from_begin(struct file_struct *f, unsigned int n_li
 
 static off_t lines_to_offset(struct file_struct *f, unsigned int n_lines)
 {
-	char buf[BUFFER_SIZE];
-	off_t offset = f->st_size;
-
 	if (from_begin)
 		return lines_to_offset_from_begin(f, n_lines);
-
-	n_lines++;	/* We also count the last \n */
-	memset(&buf, 0, sizeof(buf));
-
-	while (offset > 0 && n_lines > 0) {
-		int i, rc;
-		int block_size = BUFFER_SIZE;	/* Size of the current block we're reading */
-
-		if (offset < BUFFER_SIZE)
-			block_size = offset;
-
-		/* Start of current block */
-		offset -= block_size;
-
-		lseek(f->fd, offset, SEEK_SET);
-
-		rc = read(f->fd, &buf, block_size);
-		if (rc < 0) {
-			fprintf(stderr, "Error: Could not read from file '%s' (%s)\n", f->name, strerror(errno));
-			return -1;
-		}
-
-		for (i = block_size; i > 0; i--) {
-			if (buf[i] == '\n') {
-				n_lines--;
-
-				if (n_lines == 0) {
-					offset += i + 1; /* We don't want the first \n */
-					break;
-				}
-			}
-		}
-	}
-
-	return offset;
+	else
+		return lines_to_offset_from_end(f, n_lines);
 }
 
 static inline off_t bytes_to_offset(struct file_struct *f, unsigned int n_bytes)
