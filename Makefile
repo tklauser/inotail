@@ -37,8 +37,8 @@ cscope:
 	cscope -b
 
 release:
-	git-tar-tree HEAD inotail-$(VERSION) | gzip -9v > ../inotail-$(VERSION).tar.gz
-	git-tar-tree HEAD inotail-$(VERSION) | bzip2 -9v > ../inotail-$(VERSION).tar.bz2
+	git-archive --format=tar --prefix=inotail-0.2/ HEAD | gzip -9v > ../inotail-$(VERSION).tar.gz
+	git-archive --format=tar --prefix=inotail-0.2/ HEAD | bzip2 -9v > ../inotail-$(VERSION).tar.bz2
 
 clean:
 	rm -f inotail *.o cscope.*
