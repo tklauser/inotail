@@ -1,4 +1,4 @@
-inotail 0.1
+inotail 0.2
 
   * Support for the -n/-c +<num> options (tail relative to start of file)
   * Copyright and license cleanup
