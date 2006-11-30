@@ -1,0 +1,7 @@
+inotail 0.1
+
+  * Support for the -n/-c +<num> options (tail relative to start of file)
+  * Copyright and license cleanup
+  * Various fixes
+
+  -- Tobias Klauser <tklauser@distanz.ch.ch> 2006-11-30 17:56
