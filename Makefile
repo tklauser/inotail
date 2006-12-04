@@ -4,7 +4,7 @@
 #
 # Licensed under the terms of the GNU General Public License; version 2 or later.
 
-VERSION = 0.1
+VERSION = 0.2
 
 # Paths
 prefix	= /usr
