@@ -23,7 +23,7 @@ ifeq ($(strip $(DEBUG)),true)
 	CFLAGS  += -g -DDEBUG
 endif
 
-all: Makefile inotail
+all: inotail
 inotail: inotail.o
 
 %.o: %.c %.h
