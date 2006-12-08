@@ -41,9 +41,12 @@
 #define PROGRAM_NAME "inotail"
 #define BUFFER_SIZE 4096
 
+#define IS_PIPELIKE(mode) \
+	(S_ISFIFO(mode) || S_ISSOCK(mode))
+
 /* (ino)tail works on these file types */
 #define IS_TAILABLE(mode) \
-	(S_ISREG(mode) || S_ISFIFO(mode) || S_ISSOCK(mode) || S_ISCHR(mode))
+	(S_ISREG(mode) || IS_PIPELIKE(mode) || S_ISCHR(mode))
 
 /* Print header with filename before tailing the file? */
 static char verbose = 0;
@@ -436,7 +439,7 @@ int main(int argc, char **argv)
 		if (forever) {
 			struct stat finfo;
 			if (fstat(STDIN_FILENO, &finfo) == 0
-					&& (S_ISFIFO(finfo.st_mode) || S_ISSOCK(finfo.st_mode)))
+					&& IS_PIPELIKE(finfo.st_mode))
 				forever = 0;
 		}
 	}
