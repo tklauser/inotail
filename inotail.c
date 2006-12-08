@@ -245,7 +245,7 @@ static int tail_file(struct file_struct *f, unsigned int n_units, char mode)
 	}
 
 	/* We cannot seek on these */
-	if (S_ISFIFO(finfo.st_mode) || S_ISSOCK(finfo.st_mode) || f->fd == STDIN_FILENO)
+	if (IS_PIPELIKE(finfo.st_mode) || f->fd == STDIN_FILENO)
 		return tail_pipe(f);
 
 	f->st_size = finfo.st_size;
