@@ -277,10 +277,9 @@ out:
 
 static int handle_inotify_event(struct inotify_event *inev, struct file_struct *fil, int n_ignored)
 {
-	off_t offset;
-
 	if (inev->mask & IN_MODIFY) {
 		int rc;
+		off_t offset;
 		char fbuf[BUFFER_SIZE];
 		struct stat finfo;
 
