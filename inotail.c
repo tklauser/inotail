@@ -41,13 +41,6 @@
 #define PROGRAM_NAME "inotail"
 #define BUFFER_SIZE 4096
 
-#define IS_PIPELIKE(mode) \
-	(S_ISFIFO(mode) || S_ISSOCK(mode))
-
-/* (ino)tail works on these file types */
-#define IS_TAILABLE(mode) \
-	(S_ISREG(mode) || IS_PIPELIKE(mode) || S_ISCHR(mode))
-
 /* Print header with filename before tailing the file? */
 static char verbose = 0;
 

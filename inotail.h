@@ -18,11 +18,16 @@ struct file_struct {
 	char *name;		/* Name of file (or '-' for stdin) */
 	int fd;			/* File descriptor (or -1 if file is not open */
 	off_t st_size;		/* File size */
-
-	unsigned ignore;	/* Wheter to ignore the file in further processing */
-
+	unsigned ignore;	/* Whether to ignore the file in further processing */
 	int i_watch;		/* Inotify watch associated with file_struct */
 };
+
+#define IS_PIPELIKE(mode) \
+	(S_ISFIFO(mode) || S_ISSOCK(mode))
+
+/* inotail works on these file types */
+#define IS_TAILABLE(mode) \
+	(S_ISREG(mode) || IS_PIPELIKE(mode) || S_ISCHR(mode))
 
 #ifdef DEBUG
 # define dprintf(fmt, args...) fprintf(stderr, fmt, ##args)
