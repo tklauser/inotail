@@ -171,10 +171,8 @@ static off_t lines_to_offset_from_begin(struct file_struct *f, unsigned int n_li
 		for (i = 0; i < block_size; i++) {
 			if (buf[i] == '\n') {
 				n_lines--;
-				if (n_lines == 0) {
-					offset += i + 1;
-					return offset;
-				}
+				if (n_lines == 0)
+					return offset + i + 1;
 			}
 		}
 
