@@ -124,11 +124,8 @@ static off_t lines_to_offset_from_end(struct file_struct *f, unsigned int n_line
 		for (i = block_size; i > 0; i--) {
 			if (buf[i] == '\n') {
 				n_lines--;
-
-				if (n_lines == 0) {
-					offset += i + 1; /* We don't want the first \n */
-					break;
-				}
+				if (n_lines == 0)
+					return offset += i + 1; /* We don't want the first \n */
 			}
 		}
 	}
