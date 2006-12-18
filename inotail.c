@@ -123,8 +123,7 @@ static off_t lines_to_offset_from_end(struct file_struct *f, unsigned int n_line
 
 		for (i = block_size; i > 0; i--) {
 			if (buf[i] == '\n') {
-				n_lines--;
-				if (n_lines == 0)
+				if (--n_lines == 0)
 					return offset += i + 1; /* We don't want the first \n */
 			}
 		}
@@ -160,8 +159,7 @@ static off_t lines_to_offset_from_begin(struct file_struct *f, unsigned int n_li
 
 		for (i = 0; i < block_size; i++) {
 			if (buf[i] == '\n') {
-				n_lines--;
-				if (n_lines == 0)
+				if (--n_lines == 0)
 					return offset + i + 1;
 			}
 		}
@@ -287,11 +285,10 @@ static int handle_inotify_event(struct inotify_event *inev, struct file_struct *
 
 		offset = fil->st_size;
 		fil->st_size = finfo.st_size;
+		memset(&fbuf, 0, sizeof(fbuf));
 
 		if (verbose)
 			write_header(fil->name);
-
-		memset(&fbuf, 0, sizeof(fbuf));
 
 		lseek(fil->fd, offset, SEEK_SET);
 		while ((rc = read(fil->fd, &fbuf, BUFFER_SIZE)) != 0)
@@ -432,7 +429,7 @@ int main(int argc, char **argv)
 	}
 
 	files = malloc(n_files * sizeof(struct file_struct));
-	if (!files) {
+	if (unlikely(!files)) {
 		fprintf(stderr, "Error: Not enough memory (%s)\n", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
