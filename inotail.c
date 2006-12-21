@@ -202,7 +202,7 @@ static int tail_pipe(struct file_struct *f)
 	return rc;
 }
 
-static int tail_file(struct file_struct *f, unsigned int n_units, char mode)
+static int tail_file(struct file_struct *f, unsigned int n_units, char mode, char forever)
 {
 	int ret = -1;
 	ssize_t bytes_read = 0;
@@ -216,18 +216,18 @@ static int tail_file(struct file_struct *f, unsigned int n_units, char mode)
 		f->fd = open(f->name, O_RDONLY);
 		if (f->fd < 0) {
 			fprintf(stderr, "Error: Could not open file '%s' (%s)\n", f->name, strerror(errno));
-			return -1;
+			return ret;
 		}
 	}
 
 	if (fstat(f->fd, &finfo) < 0) {
 		fprintf(stderr, "Error: Could not stat file '%s' (%s)\n", f->name, strerror(errno));
-		goto out;
+		goto err;
 	}
 
 	if (!IS_TAILABLE(finfo.st_mode)) {
 		fprintf(stderr, "Error: '%s' of unsupported file type\n", f->name);
-		goto out;
+		goto err;
 	}
 
 	/* We cannot seek on these */
@@ -243,7 +243,7 @@ static int tail_file(struct file_struct *f, unsigned int n_units, char mode)
 
 	/* We only get negative offsets on errors */
 	if (offset < 0)
-		goto out;
+		goto err;
 
 	if (verbose)
 		write_header(f->name);
@@ -254,7 +254,12 @@ static int tail_file(struct file_struct *f, unsigned int n_units, char mode)
 		write(STDOUT_FILENO, buf, (size_t) bytes_read);
 
 	ret = 0;
-out:
+
+	/* Let the fd open, we'll need it */
+	if (forever)
+		return ret;
+
+err:
 	if (close(f->fd) < 0) {
 		fprintf(stderr, "Error: Could not close file '%s' (%s)\n", f->name, strerror(errno));
 		ret = -1;
@@ -271,15 +276,15 @@ static int handle_inotify_event(struct inotify_event *inev, struct file_struct *
 		char fbuf[BUFFER_SIZE];
 		struct stat finfo;
 
+#if 0
 		fil->fd = open(fil->name, O_RDONLY);
 		if (fil->fd < 0) {
 			fprintf(stderr, "Error: Could not open file '%s' (%s)\n", fil->name, strerror(errno));
 			goto ignore;
 		}
-
+#endif
 		if (fstat(fil->fd, &finfo) < 0) {
 			fprintf(stderr, "Error: Could not stat file '%s' (%s)\n", fil->name, strerror(errno));
-			close(fil->fd);
 			goto ignore;
 		}
 
@@ -293,9 +298,9 @@ static int handle_inotify_event(struct inotify_event *inev, struct file_struct *
 		lseek(fil->fd, offset, SEEK_SET);
 		while ((rc = read(fil->fd, &fbuf, BUFFER_SIZE)) != 0)
 			write(STDOUT_FILENO, fbuf, rc);
-
+#if 0
 		close(fil->fd);
-
+#endif
 		return n_ignored;
 	} else if (inev->mask & IN_DELETE_SELF) {
 		fprintf(stderr, "File '%s' deleted.\n", fil->name);
@@ -307,6 +312,9 @@ static int handle_inotify_event(struct inotify_event *inev, struct file_struct *
 	}
 
 ignore:
+	if (close(fil->fd) < 0)
+		fprintf(stderr, "Error: Could not close file '%s' (%s)\n", fil->name, strerror(errno));
+
 	fil->ignore = 1;
 	n_ignored++;
 
@@ -437,7 +445,7 @@ int main(int argc, char **argv)
 	for (i = 0; i < n_files; i++) {
 		files[i].name = filenames[i];
 		setup_file(&files[i]);
-		ret = tail_file(&files[i], n_units, mode);
+		ret = tail_file(&files[i], n_units, mode, forever);
 		if (ret < 0)
 			files[i].ignore = 1;
 	}
