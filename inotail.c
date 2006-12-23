@@ -60,7 +60,7 @@ static const struct option long_opts[] = {
 
 static void usage(const int status)
 {
-	fprintf(stderr, "Usage: %s [OPTION]... [FILE]...\n\n"
+	fprintf(stdout, "Usage: %s [OPTION]... [FILE]...\n\n"
 			"  -c N, --bytes=N    output the last N bytes\n"
 			"  -f,   --follow     output as the file grows\n"
 			"  -n N, --lines=N    output the last N lines (default: %d)\n"
