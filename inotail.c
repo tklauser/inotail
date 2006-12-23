@@ -305,8 +305,8 @@ static int handle_inotify_event(struct inotify_event *inev, struct file_struct *
 	} else if (inev->mask & IN_DELETE_SELF) {
 		fprintf(stderr, "File '%s' deleted.\n", fil->name);
 	} else if (inev->mask & IN_MOVE_SELF) {
-		/* TODO: Try to follow file/fd */
 		fprintf(stderr, "File '%s' moved.\n", fil->name);
+		return n_ignored;
 	} else if (inev->mask & IN_UNMOUNT) {
 		fprintf(stderr, "Device containing file '%s' unmounted.\n", fil->name);
 	}
