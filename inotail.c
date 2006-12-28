@@ -335,10 +335,16 @@ static int watch_files(struct file_struct *f, int n_files)
 	}
 
 	for (i = 0; i < n_files; i++) {
-		if (!f[i].ignore)
+		if (!f[i].ignore) {
 			f[i].i_watch = inotify_add_watch(ifd, f[i].name,
 						IN_MODIFY|IN_DELETE_SELF|IN_MOVE_SELF|IN_UNMOUNT);
-		else
+
+			if (f[i].i_watch < 0) {
+				fprintf(stderr, "Error: Could not create inotify watch on file '%s' (%s)\n", f[i].name, strerror(errno));
+				f[i].ignore = 1;
+				n_ignored++;
+			}
+		} else
 			n_ignored++;
 	}
 
