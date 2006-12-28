@@ -274,7 +274,7 @@ err:
 	return ret;
 }
 
-static int handle_inotify_event(struct inotify_event *inev, struct file_struct *fil, int n_ignored)
+static int handle_inotify_event(struct inotify_event *inev, struct file_struct *f, int n_ignored)
 {
 	if (inev->mask & IN_MODIFY) {
 		int rc;
@@ -283,48 +283,48 @@ static int handle_inotify_event(struct inotify_event *inev, struct file_struct *
 		struct stat finfo;
 
 #if 0
-		fil->fd = open(fil->name, O_RDONLY);
-		if (fil->fd < 0) {
-			fprintf(stderr, "Error: Could not open file '%s' (%s)\n", fil->name, strerror(errno));
+		f->fd = open(f->name, O_RDONLY);
+		if (f->fd < 0) {
+			fprintf(stderr, "Error: Could not open file '%s' (%s)\n", f->name, strerror(errno));
 			goto ignore;
 		}
 #endif
-		if (fstat(fil->fd, &finfo) < 0) {
-			fprintf(stderr, "Error: Could not stat file '%s' (%s)\n", fil->name, strerror(errno));
+		if (fstat(f->fd, &finfo) < 0) {
+			fprintf(stderr, "Error: Could not stat file '%s' (%s)\n", f->name, strerror(errno));
 			goto ignore;
 		}
 
-		offset = fil->st_size;
-		fil->st_size = finfo.st_size;
+		offset = f->st_size;
+		f->st_size = finfo.st_size;
 		memset(&fbuf, 0, sizeof(fbuf));
 
 		if (verbose)
-			write_header(fil->name);
+			write_header(f->name);
 
-		lseek(fil->fd, offset, SEEK_SET);
-		while ((rc = read(fil->fd, &fbuf, BUFFER_SIZE)) != 0)
+		lseek(f->fd, offset, SEEK_SET);
+		while ((rc = read(f->fd, &fbuf, BUFFER_SIZE)) != 0)
 			write(STDOUT_FILENO, fbuf, rc);
 #if 0
-		close(fil->fd);
+		close(f->fd);
 #endif
 		return n_ignored;
 	} else if (inev->mask & IN_DELETE_SELF) {
-		fprintf(stderr, "File '%s' deleted.\n", fil->name);
+		fprintf(stderr, "File '%s' deleted.\n", f->name);
 	} else if (inev->mask & IN_MOVE_SELF) {
-		fprintf(stderr, "File '%s' moved.\n", fil->name);
+		fprintf(stderr, "File '%s' moved.\n", f->name);
 		return n_ignored;
 	} else if (inev->mask & IN_UNMOUNT) {
-		fprintf(stderr, "Device containing file '%s' unmounted.\n", fil->name);
+		fprintf(stderr, "Device containing file '%s' unmounted.\n", f->name);
 	}
 
 ignore:
-	if (close(fil->fd) < 0)
-		fprintf(stderr, "Error: Could not close file '%s' (%s)\n", fil->name, strerror(errno));
+	if (close(f->fd) < 0)
+		fprintf(stderr, "Error: Could not close file '%s' (%s)\n", f->name, strerror(errno));
 
-	return ignore_file(fil, n_ignored);
+	return ignore_file(f, n_ignored);
 }
 
-static int watch_files(struct file_struct *f, int n_files)
+static int watch_files(struct file_struct *files, int n_files)
 {
 	int ifd, i, n_ignored = 0;
 	unsigned buflen = 2 * n_files * sizeof(struct inotify_event);
@@ -338,13 +338,13 @@ static int watch_files(struct file_struct *f, int n_files)
 	}
 
 	for (i = 0; i < n_files; i++) {
-		if (!f[i].ignore) {
-			f[i].i_watch = inotify_add_watch(ifd, f[i].name,
+		if (!files[i].ignore) {
+			files[i].i_watch = inotify_add_watch(ifd, files[i].name,
 						IN_MODIFY|IN_DELETE_SELF|IN_MOVE_SELF|IN_UNMOUNT);
 
-			if (f[i].i_watch < 0) {
-				fprintf(stderr, "Error: Could not create inotify watch on file '%s' (%s)\n", f[i].name, strerror(errno));
-				n_ignored = ignore_file(&f[i], n_ignored);
+			if (files[i].i_watch < 0) {
+				fprintf(stderr, "Error: Could not create inotify watch on file '%s' (%s)\n", files[i].name, strerror(errno));
+				n_ignored = ignore_file(&files[i], n_ignored);
 			}
 		} else
 			n_ignored++;
@@ -360,20 +360,20 @@ static int watch_files(struct file_struct *f, int n_files)
 		inev = (struct inotify_event *) buf;
 
 		while (len > 0) {
-			struct file_struct *fil = NULL;
+			struct file_struct *f = NULL;
 
 			/* Which file has produced the event? */
 			for (i = 0; i < n_files; i++) {
-				if (!f[i].ignore && f[i].fd >= 0 && f[i].i_watch == inev->wd) {
-					fil = &f[i];
+				if (!files[i].ignore && files[i].fd >= 0 && files[i].i_watch == inev->wd) {
+					f = &files[i];
 					break;
 				}
 			}
 
-			if (unlikely(!fil))
+			if (unlikely(!f))
 				break;
 
-			n_ignored = handle_inotify_event(inev, fil, n_ignored);
+			n_ignored = handle_inotify_event(inev, f, n_ignored);
 			len -= sizeof(struct inotify_event) + inev->len;
 			inev = (struct inotify_event *) ((char *) inev + sizeof(struct inotify_event) + inev->len);
 		}
