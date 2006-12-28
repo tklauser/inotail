@@ -82,6 +82,12 @@ static void setup_file(struct file_struct *f)
 	f->i_watch = -1;
 }
 
+static int ignore_file(struct file_struct *f, int n_ignored)
+{
+	f->ignore = 1;
+	return ++n_ignored;
+}
+
 static inline char *pretty_name(char *filename)
 {
 	return (strncmp(filename, "-", 1) == 0) ? "standard input" : filename;
@@ -315,10 +321,7 @@ ignore:
 	if (close(fil->fd) < 0)
 		fprintf(stderr, "Error: Could not close file '%s' (%s)\n", fil->name, strerror(errno));
 
-	fil->ignore = 1;
-	n_ignored++;
-
-	return n_ignored;
+	return ignore_file(fil, n_ignored);
 }
 
 static int watch_files(struct file_struct *f, int n_files)
@@ -341,8 +344,7 @@ static int watch_files(struct file_struct *f, int n_files)
 
 			if (f[i].i_watch < 0) {
 				fprintf(stderr, "Error: Could not create inotify watch on file '%s' (%s)\n", f[i].name, strerror(errno));
-				f[i].ignore = 1;
-				n_ignored++;
+				n_ignored = ignore_file(&f[i], n_ignored);
 			}
 		} else
 			n_ignored++;
@@ -453,7 +455,7 @@ int main(int argc, char **argv)
 		setup_file(&files[i]);
 		ret = tail_file(&files[i], n_units, mode, forever);
 		if (ret < 0)
-			files[i].ignore = 1;
+			ignore_file(&files[i], 0);
 	}
 
 	if (forever)
