@@ -130,7 +130,7 @@ static off_t lines_to_offset_from_end(struct file_struct *f, unsigned int n_line
 			return -1;
 		}
 
-		for (i = block_size; i > 0; i--) {
+		for (i = block_size - 1; i > 0; i--) {
 			if (buf[i] == '\n') {
 				if (--n_lines == 0)
 					return offset += i + 1; /* We don't want the first \n */
