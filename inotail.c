@@ -47,6 +47,9 @@ static char verbose = 0;
 /* Tailing relative to begin or end of file */
 static char from_begin = 0;
 
+/* Number of ignored files */
+static int n_ignored = 0;
+
 /* Command line options */
 static const struct option long_opts[] = {
 	{"bytes", required_argument, NULL, 'c'},
@@ -82,10 +85,10 @@ static void setup_file(struct file_struct *f)
 	f->i_watch = -1;
 }
 
-static int ignore_file(struct file_struct *f, int n_ignored)
+static void ignore_file(struct file_struct *f)
 {
 	f->ignore = 1;
-	return ++n_ignored;
+	n_ignored++;
 }
 
 static inline char *pretty_name(char *filename)
@@ -184,7 +187,7 @@ static off_t lines_to_offset(struct file_struct *f, unsigned int n_lines)
 		return lines_to_offset_from_end(f, n_lines);
 }
 
-static inline off_t bytes_to_offset(struct file_struct *f, unsigned int n_bytes)
+static off_t bytes_to_offset(struct file_struct *f, unsigned int n_bytes)
 {
 	/* tail everything for 'inotail -c +0' */
 	if (from_begin && n_bytes == 0)
@@ -274,8 +277,10 @@ err:
 	return ret;
 }
 
-static int handle_inotify_event(struct inotify_event *inev, struct file_struct *f, int n_ignored)
+static int handle_inotify_event(struct inotify_event *inev, struct file_struct *f)
 {
+	int ret = 0;
+
 	if (inev->mask & IN_MODIFY) {
 		int rc;
 		off_t offset;
@@ -291,6 +296,7 @@ static int handle_inotify_event(struct inotify_event *inev, struct file_struct *
 #endif
 		if (fstat(f->fd, &finfo) < 0) {
 			fprintf(stderr, "Error: Could not stat file '%s' (%s)\n", f->name, strerror(errno));
+			ret = -1;
 			goto ignore;
 		}
 
@@ -307,26 +313,30 @@ static int handle_inotify_event(struct inotify_event *inev, struct file_struct *
 #if 0
 		close(f->fd);
 #endif
-		return n_ignored;
+		return ret;
 	} else if (inev->mask & IN_DELETE_SELF) {
 		fprintf(stderr, "File '%s' deleted.\n", f->name);
 	} else if (inev->mask & IN_MOVE_SELF) {
 		fprintf(stderr, "File '%s' moved.\n", f->name);
-		return n_ignored;
+		return 0;
 	} else if (inev->mask & IN_UNMOUNT) {
 		fprintf(stderr, "Device containing file '%s' unmounted.\n", f->name);
 	}
 
 ignore:
-	if (close(f->fd) < 0)
+	if (close(f->fd) < 0) {
 		fprintf(stderr, "Error: Could not close file '%s' (%s)\n", f->name, strerror(errno));
+		ret = -1;
+	}
 
-	return ignore_file(f, n_ignored);
+	ignore_file(f);
+
+	return ret;
 }
 
 static int watch_files(struct file_struct *files, int n_files)
 {
-	int ifd, i, n_ignored = 0;
+	int ifd, i;
 	unsigned buflen = 2 * n_files * sizeof(struct inotify_event);
 	struct inotify_event *inev;
 	char *buf;
@@ -344,10 +354,9 @@ static int watch_files(struct file_struct *files, int n_files)
 
 			if (files[i].i_watch < 0) {
 				fprintf(stderr, "Error: Could not create inotify watch on file '%s' (%s)\n", files[i].name, strerror(errno));
-				n_ignored = ignore_file(&files[i], n_ignored);
+				ignore_file(&files[i]);
 			}
-		} else
-			n_ignored++;
+		}
 	}
 
 	buf = malloc(buflen);
@@ -373,7 +382,7 @@ static int watch_files(struct file_struct *files, int n_files)
 			if (unlikely(!f))
 				break;
 
-			n_ignored = handle_inotify_event(inev, f, n_ignored);
+			handle_inotify_event(inev, f);
 			len -= sizeof(struct inotify_event) + inev->len;
 			inev = (struct inotify_event *) ((char *) inev + sizeof(struct inotify_event) + inev->len);
 		}
@@ -382,7 +391,7 @@ static int watch_files(struct file_struct *files, int n_files)
 	free(buf);
 	close(ifd);
 
-	return n_ignored;
+	return -1;
 }
 
 int main(int argc, char **argv)
@@ -455,7 +464,7 @@ int main(int argc, char **argv)
 		setup_file(&files[i]);
 		ret = tail_file(&files[i], n_units, mode, forever);
 		if (ret < 0)
-			ignore_file(&files[i], 0);
+			ignore_file(&files[i]);
 	}
 
 	if (forever)
