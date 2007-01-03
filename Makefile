@@ -1,6 +1,6 @@
 # Makefile for inotail
 #
-# Copyright (C) 2006, Tobias Klauser <tklauser@distanz.ch>
+# Copyright (C) 2006, 2007 Tobias Klauser <tklauser@distanz.ch>
 #
 # Licensed under the terms of the GNU General Public License; version 2 or later.
 
@@ -11,7 +11,7 @@ prefix	= /usr
 DESTDIR	=
 
 CC := gcc
-CFLAGS := -Wall -pipe -D_USE_SOURCE -DVERSION="\"$(VERSION)\""
+CFLAGS := $(CFLAGS) -Wall -pipe -D_USE_SOURCE -DVERSION="\"$(VERSION)\""
 WARN := -Wstrict-prototypes -Wsign-compare -Wshadow \
 	-Wchar-subscripts -Wmissing-declarations -Wnested-externs \
 	-Wpointer-arith -Wcast-align -Wmissing-prototypes
