@@ -440,7 +440,7 @@ int main(int argc, char **argv)
 	} else {
 		/* It must be stdin then */
 		static char *dummy_stdin = "-";
-		n_files++;
+		n_files = 1;
 		filenames = &dummy_stdin;
 
 		/* POSIX says that -f is ignored if no file operand is
