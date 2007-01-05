@@ -196,9 +196,9 @@ static off_t bytes_to_offset(struct file_struct *f, unsigned int n_bytes)
 		return (from_begin ? ((off_t) n_bytes - 1) : (f->st_size - (off_t) n_bytes));
 }
 
-static int tail_pipe(struct file_struct *f)
+static ssize_t tail_pipe(struct file_struct *f)
 {
-	int rc;
+	ssize_t rc;
 	char buf[BUFFER_SIZE];
 
 	if (verbose)
