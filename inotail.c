@@ -424,7 +424,7 @@ int main(int argc, char **argv)
 			verbose = 1;
 			break;
 		case 'V':
-			fprintf(stderr, "%s %s\n", PROGRAM_NAME, VERSION);
+			fprintf(stdout, "%s %s\n", PROGRAM_NAME, VERSION);
 			return 0;
 		case 'h':
 			usage(EXIT_SUCCESS);
