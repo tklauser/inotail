@@ -16,6 +16,22 @@ Requirements
 - Linux kernel 2.6.13 or higher with CONFIG_INOTIFY enabled
 - Standard C Library (tested with GNU libc but might work with others too)
 
+Building and installing inotail
+-------------------------------
+To build inotail:
+
+	$ make
+
+By default, inotail is installed to /usr/local/bin/, the manpage is installed to
+/usr/local/share/man/. To install the inotail files to these locations:
+
+	$ make install
+
+To change these locations just set the prefix variable, e.g. to install the
+inotail binary to /usr/ and the manpage to /usr/share/man/ respectively:
+
+	$ make prefix=/usr install
+
 License
 -------
 inotail is licensed under the terms of the GNU General Public License version 2
