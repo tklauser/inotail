@@ -7,7 +7,7 @@
 VERSION = 0.2
 
 # Paths
-prefix	= /usr
+prefix	= /usr/local
 DESTDIR	=
 
 CC := gcc
