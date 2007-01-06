@@ -4,23 +4,25 @@
 #
 # Licensed under the terms of the GNU General Public License; version 2 or later.
 
-VERSION = 0.2
+VERSION	= 0.2
 
 # Paths
 prefix	= /usr/local
 DESTDIR	=
 
-CC := gcc
-CFLAGS := $(CFLAGS) -Wall -pipe -D_USE_SOURCE -DVERSION="\"$(VERSION)\""
-WARN := -Wstrict-prototypes -Wsign-compare -Wshadow \
-	-Wchar-subscripts -Wmissing-declarations -Wnested-externs \
-	-Wpointer-arith -Wcast-align -Wmissing-prototypes
-CFLAGS += $(WARN)
+CC	:= gcc
+CFLAGS	:= $(CFLAGS) -Wall -pipe -D_USE_SOURCE -DVERSION="\"$(VERSION)\""
+WARN	:= -Wstrict-prototypes -Wsign-compare -Wshadow \
+	   -Wchar-subscripts -Wmissing-declarations -Wnested-externs \
+	   -Wpointer-arith -Wcast-align -Wmissing-prototypes
+CFLAGS	+= $(WARN)
+LDFLAGS	:=
 
 # Compile with 'make DEBUG=true' to enable debugging
 DEBUG = false
 ifeq ($(strip $(DEBUG)),true)
-	CFLAGS  += -g -DDEBUG
+	CFLAGS  += -g -DDEBUG -fmudflap
+	LDFLAGS += -lmudflap
 endif
 
 all: inotail
