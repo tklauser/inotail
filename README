@@ -15,6 +15,7 @@ Requirements
 ------------
 - Linux kernel 2.6.13 or higher with CONFIG_INOTIFY enabled
 - Standard C Library (tested with GNU libc but might work with others too)
+- GCC (other compilers might work but are not tested)
 
 Building and installing inotail
 -------------------------------
