@@ -282,7 +282,7 @@ static int handle_inotify_event(struct inotify_event *inev, struct file_struct *
 	int ret = 0;
 
 	if (inev->mask & IN_MODIFY) {
-		int rc;
+		ssize_t rc;
 		off_t offset;
 		char fbuf[BUFFER_SIZE];
 		struct stat finfo;
@@ -309,7 +309,7 @@ static int handle_inotify_event(struct inotify_event *inev, struct file_struct *
 
 		lseek(f->fd, offset, SEEK_SET);
 		while ((rc = read(f->fd, &fbuf, BUFFER_SIZE)) != 0)
-			write(STDOUT_FILENO, fbuf, rc);
+			write(STDOUT_FILENO, fbuf, (size_t) rc);
 #if 0
 		close(f->fd);
 #endif
@@ -397,7 +397,7 @@ static int watch_files(struct file_struct *files, int n_files)
 int main(int argc, char **argv)
 {
 	int i, c, ret = 0;
-	int n_files = 0;
+	int n_files;
 	int n_units = DEFAULT_N_LINES;
 	char forever = 0, mode = M_LINES;
 	char **filenames;
