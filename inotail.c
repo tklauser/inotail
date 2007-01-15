@@ -363,7 +363,7 @@ static int watch_files(struct file_struct *files, int n_files)
 	memset(buf, 0, buflen);
 
 	while (n_ignored < n_files) {
-		int len;
+		ssize_t len;
 
 		len = read(ifd, buf, buflen);
 		inev = (struct inotify_event *) buf;
