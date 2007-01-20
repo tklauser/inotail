@@ -4,14 +4,15 @@
  *
  * Licensed under the terms of the GNU General Public License Version 2.
  *
- * Copyright (c) 2006 Tobias Klauser <tklauser@distanz.ch>
+ * Copyright (c) 2006-2007 Tobias Klauser <tklauser@distanz.ch>
  */
 
 #ifndef _LINUX_INOTIFY_SYSCALLS_H
 #define _LINUX_INOTIFY_SYSCALLS_H
 
 #include <sys/syscall.h>
-
+/* glibc already defines them for some architectures */
+#ifndef __NR_inotify_init
 #if defined(__i386__)
 # define __NR_inotify_init	291
 # define __NR_inotify_add_watch	292
@@ -79,6 +80,7 @@
 #else
 # error "inotify not supported on this architecture!"
 #endif
+#endif	/* __NR_inotify_init */
 
 static inline int inotify_init (void)
 {
