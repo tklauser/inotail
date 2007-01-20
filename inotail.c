@@ -3,7 +3,7 @@
  * A fast implementation of tail which uses the inotify API present in
  * recent versions of the Linux kernel.
  *
- * Copyright (C) 2005-2006, Tobias Klauser <tklauser@distanz.ch>
+ * Copyright (C) 2005-2007, Tobias Klauser <tklauser@distanz.ch>
  *
  * The idea was taken from turbotail.
  *
@@ -40,6 +40,8 @@
 
 #define PROGRAM_NAME "inotail"
 #define BUFFER_SIZE 4096
+/* inotify event buffer length for one file */
+#define INOTIFY_BUFLEN (4 * sizeof(struct inotify_event))
 
 /* Print header with filename before tailing the file? */
 static char verbose = 0;
@@ -337,9 +339,7 @@ ignore:
 static int watch_files(struct file_struct *files, int n_files)
 {
 	int ifd, i;
-	unsigned buflen = 2 * n_files * sizeof(struct inotify_event);
-	struct inotify_event *inev;
-	char *buf;
+	char buf[n_files * INOTIFY_BUFLEN];
 
 	ifd = inotify_init();
 	if (ifd < 0) {
@@ -353,23 +353,28 @@ static int watch_files(struct file_struct *files, int n_files)
 						IN_MODIFY|IN_DELETE_SELF|IN_MOVE_SELF|IN_UNMOUNT);
 
 			if (files[i].i_watch < 0) {
-				fprintf(stderr, "Error: Could not create inotify watch on file '%s' (%s)\n", files[i].name, strerror(errno));
+				fprintf(stderr, "Error: Could not create inotify watch on file '%s' (%s)\n",
+						files[i].name, strerror(errno));
 				ignore_file(&files[i]);
 			}
 		}
 	}
 
-	buf = malloc(buflen);
-	memset(buf, 0, buflen);
-
 	while (n_ignored < n_files) {
 		ssize_t len;
+		int ev_idx = 0;
 
-		len = read(ifd, buf, buflen);
-		inev = (struct inotify_event *) buf;
+		len = read(ifd, buf, (n_files * INOTIFY_BUFLEN));
+		if (len < 0) {
+			fprintf(stderr, "Error: Could not read inotify events (%s)\n", strerror(errno));
+			exit(EXIT_FAILURE);
+		}
 
-		while (len > 0) {
+		while (ev_idx < len) {
+			struct inotify_event *inev;
 			struct file_struct *f = NULL;
+
+			inev = (struct inotify_event *) &buf[ev_idx];
 
 			/* Which file has produced the event? */
 			for (i = 0; i < n_files; i++) {
@@ -383,8 +388,7 @@ static int watch_files(struct file_struct *files, int n_files)
 				break;
 
 			handle_inotify_event(inev, f);
-			len -= sizeof(struct inotify_event) + inev->len;
-			inev = (struct inotify_event *) ((char *) inev + sizeof(struct inotify_event) + inev->len);
+			ev_idx += (n_files * INOTIFY_BUFLEN) + inev->len;
 		}
 	}
 
