@@ -157,8 +157,8 @@ static off_t lines_to_offset_from_begin(struct file_struct *f, unsigned int n_li
 	memset(&buf, 0, sizeof(buf));
 
 	while (offset <= f->st_size && n_lines > 0) {
-		int i, rc;
-		int block_size = BUFFER_SIZE;
+		int i;
+		ssize_t rc, block_size = BUFFER_SIZE;
 
 		lseek(f->fd, offset, SEEK_SET);
 
@@ -166,7 +166,8 @@ static off_t lines_to_offset_from_begin(struct file_struct *f, unsigned int n_li
 		if (rc < 0) {
 			fprintf(stderr, "Error: Could not read from file '%s' (%s)\n", f->name, strerror(errno));
 			return -1;
-		}
+		} else if (rc < block_size)
+			block_size = rc;
 
 		for (i = 0; i < block_size; i++) {
 			if (buf[i] == '\n') {
