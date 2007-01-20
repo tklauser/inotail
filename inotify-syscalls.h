@@ -77,6 +77,10 @@
 #  define __NR_inotify_add_watch	(__NR_Linux + 248)
 #  define __NR_inotify_rm_watch		(__NR_Linux + 249)
 # endif
+#elif defined (__m68k__)
+# define __NR_inotify_init	284
+# define __NR_inotify_add_watch	285
+# define __NR_inotify_rm_watch	286
 #else
 # error "inotify not supported on this architecture!"
 #endif
