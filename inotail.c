@@ -79,7 +79,7 @@ static void usage(const int status)
 	exit(status);
 }
 
-static void setup_file(struct file_struct *f)
+static inline void setup_file(struct file_struct *f)
 {
 	f->fd = -1;
 	f->st_size = 0;
@@ -87,7 +87,7 @@ static void setup_file(struct file_struct *f)
 	f->i_watch = -1;
 }
 
-static void ignore_file(struct file_struct *f)
+static inline void ignore_file(struct file_struct *f)
 {
 	f->ignore = 1;
 	n_ignored++;
@@ -409,7 +409,7 @@ int main(int argc, char **argv)
 	int n_units = DEFAULT_N_LINES;
 	char forever = 0, mode = M_LINES;
 	char **filenames;
-	struct file_struct *files;
+	struct file_struct *files = NULL;
 
 	while ((c = getopt_long(argc, argv, "c:n:fvVh", long_opts, NULL)) != -1) {
 		switch (c) {
