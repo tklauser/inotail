@@ -1,6 +1,6 @@
 # Makefile for inotail
 #
-# Copyright (C) 2006, 2007 Tobias Klauser <tklauser@distanz.ch>
+# Copyright (C) 2006-2007 Tobias Klauser <tklauser@distanz.ch>
 #
 # Licensed under the terms of the GNU General Public License; version 2 or later.
 
@@ -39,8 +39,8 @@ cscope:
 	cscope -b
 
 release:
-	git-archive --format=tar --prefix=inotail-0.2/ HEAD | gzip -9v > ../inotail-$(VERSION).tar.gz
-	git-archive --format=tar --prefix=inotail-0.2/ HEAD | bzip2 -9v > ../inotail-$(VERSION).tar.bz2
+	git-archive --format=tar --prefix=inotail-$(VERSION)/ HEAD | gzip -9v > ../inotail-$(VERSION).tar.gz
+	git-archive --format=tar --prefix=inotail-$(VERSION)/ HEAD | bzip2 -9v > ../inotail-$(VERSION).tar.bz2
 
 clean:
 	rm -f inotail *.o cscope.*
