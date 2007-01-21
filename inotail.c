@@ -95,7 +95,7 @@ static inline void ignore_file(struct file_struct *f)
 
 static inline char *pretty_name(char *filename)
 {
-	return (strncmp(filename, "-", 1) == 0) ? "standard input" : filename;
+	return (strcmp(filename, "-") == 0) ? "standard input" : filename;
 }
 
 static void write_header(char *filename)
@@ -222,7 +222,7 @@ static int tail_file(struct file_struct *f, unsigned int n_units, char mode, cha
 	char buf[BUFFER_SIZE];
 	struct stat finfo;
 
-	if (strncmp(f->name, "-", 1) == 0)
+	if (strcmp(f->name, "-") == 0)
 		f->fd = STDIN_FILENO;
 	else {
 		f->fd = open(f->name, O_RDONLY);
