@@ -11,11 +11,9 @@ prefix	= /usr/local
 DESTDIR	=
 
 CC	:= gcc
-CFLAGS	:= $(CFLAGS) -Wall -pipe -D_USE_SOURCE -DVERSION="\"$(VERSION)\""
-WARN	:= -Wstrict-prototypes -Wsign-compare -Wshadow \
-	   -Wchar-subscripts -Wmissing-declarations -Wnested-externs \
-	   -Wpointer-arith -Wcast-align -Wmissing-prototypes
-CFLAGS	+= $(WARN)
+CFLAGS	:= $(CFLAGS) -Wall -pipe -D_USE_SOURCE -DVERSION="\"$(VERSION)\"" \
+	   -Wstrict-prototypes -Wsign-compare -Wshadow -Wchar-subscripts \
+	   -Wmissing-declarations -Wpointer-arith -Wcast-align -Wmissing-prototypes
 LDFLAGS	:=
 
 # Compile with 'make DEBUG=true' to enable debugging
