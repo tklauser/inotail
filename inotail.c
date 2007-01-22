@@ -368,7 +368,7 @@ static int watch_files(struct file_struct *files, int n_files)
 		ssize_t len;
 		int ev_idx = 0;
 
-		len = read(ifd, buf, (n_files * INOTIFY_BUFLEN));
+		len = read(ifd, &buf, (n_files * INOTIFY_BUFLEN));
 		if (len < 0) {
 			fprintf(stderr, "Error: Could not read inotify events (%s)\n", strerror(errno));
 			exit(EXIT_FAILURE);
@@ -396,7 +396,6 @@ static int watch_files(struct file_struct *files, int n_files)
 		}
 	}
 
-	free(buf);
 	close(ifd);
 
 	return -1;
