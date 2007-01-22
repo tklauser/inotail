@@ -286,10 +286,8 @@ static int handle_inotify_event(struct inotify_event *inev, struct file_struct *
 
 	if (inev->mask & IN_MODIFY) {
 		ssize_t rc;
-		off_t offset;
 		char fbuf[BUFFER_SIZE];
 		struct stat finfo;
-
 #if 0
 		f->fd = open(f->name, O_RDONLY);
 		if (f->fd < 0) {
@@ -297,22 +295,20 @@ static int handle_inotify_event(struct inotify_event *inev, struct file_struct *
 			goto ignore;
 		}
 #endif
+		if (verbose)
+			write_header(f->name);
+
+		lseek(f->fd, f->st_size, SEEK_SET);	/* Old file size */
+		while ((rc = read(f->fd, &fbuf, BUFFER_SIZE)) != 0)
+			write(STDOUT_FILENO, fbuf, (size_t) rc);
+
 		if (fstat(f->fd, &finfo) < 0) {
 			fprintf(stderr, "Error: Could not stat file '%s' (%s)\n", f->name, strerror(errno));
 			ret = -1;
 			goto ignore;
 		}
 
-		offset = f->st_size;
 		f->st_size = finfo.st_size;
-		memset(&fbuf, 0, sizeof(fbuf));
-
-		if (verbose)
-			write_header(f->name);
-
-		lseek(f->fd, offset, SEEK_SET);
-		while ((rc = read(f->fd, &fbuf, BUFFER_SIZE)) != 0)
-			write(STDOUT_FILENO, fbuf, (size_t) rc);
 #if 0
 		close(f->fd);
 #endif
@@ -391,8 +387,9 @@ static int watch_files(struct file_struct *files, int n_files)
 			if (unlikely(!f))
 				break;
 
-			handle_inotify_event(inev, f);
-			ev_idx += (n_files * INOTIFY_BUFLEN) + inev->len;
+			if (handle_inotify_event(inev, f) < 0)
+				break;
+			ev_idx += INOTIFY_BUFLEN + inev->len;
 		}
 	}
 
