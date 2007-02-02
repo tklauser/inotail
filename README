@@ -19,17 +19,17 @@ Requirements
 
 Building and installing inotail
 -------------------------------
-To build inotail:
+To build inotail type:
 
 	$ make
 
 By default, inotail is installed to /usr/local/bin/, the manpage is installed to
-/usr/local/share/man/. To install the inotail files to these locations:
+/usr/local/share/man/man1/. To install the inotail files to these locations type:
 
 	$ make install
 
-To change these locations just set the prefix variable, e.g. to install the
-inotail binary to /usr/ and the manpage to /usr/share/man/ respectively:
+To change these locations just set the prefix variable. E.g. to install the
+inotail binary to /usr/ and the manpage to /usr/share/man/ respectively type:
 
 	$ make prefix=/usr install
 
