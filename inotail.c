@@ -101,9 +101,13 @@ static inline char *pretty_name(char *filename)
 static void write_header(char *filename)
 {
 	static unsigned short first_file = 1;
+	static char *last = NULL;
 
-	fprintf(stdout, "%s==> %s <==\n", (first_file ? "" : "\n"), pretty_name(filename));
+	if (last != filename)
+		fprintf(stdout, "%s==> %s <==\n", (first_file ? "" : "\n"), pretty_name(filename));
+
 	first_file = 0;
+	last = filename;
 }
 
 static off_t lines_to_offset_from_end(struct file_struct *f, unsigned int n_lines)
