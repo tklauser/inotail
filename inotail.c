@@ -30,6 +30,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <getopt.h>
+#include <ctype.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 
@@ -110,13 +111,12 @@ static void write_header(char *filename)
 	last = filename;
 }
 
-static off_t lines_to_offset_from_end(struct file_struct *f, unsigned int n_lines)
+static off_t lines_to_offset_from_end(struct file_struct *f, unsigned long n_lines)
 {
 	char buf[BUFFER_SIZE];
 	off_t offset = f->st_size;
 
 	n_lines++;	/* We also count the last \n */
-	memset(&buf, 0, sizeof(buf));
 
 	while (offset > 0 && n_lines > 0) {
 		int i, rc;
@@ -148,7 +148,7 @@ static off_t lines_to_offset_from_end(struct file_struct *f, unsigned int n_line
 
 }
 
-static off_t lines_to_offset_from_begin(struct file_struct *f, unsigned int n_lines)
+static off_t lines_to_offset_from_begin(struct file_struct *f, unsigned long n_lines)
 {
 	char buf[BUFFER_SIZE];
 	off_t offset = 0;
@@ -158,7 +158,6 @@ static off_t lines_to_offset_from_begin(struct file_struct *f, unsigned int n_li
 		return 0;
 
 	n_lines--;
-	memset(&buf, 0, sizeof(buf));
 
 	while (offset <= f->st_size && n_lines > 0) {
 		int i;
@@ -186,7 +185,7 @@ static off_t lines_to_offset_from_begin(struct file_struct *f, unsigned int n_li
 	return offset;
 }
 
-static off_t lines_to_offset(struct file_struct *f, unsigned int n_lines)
+static off_t lines_to_offset(struct file_struct *f, unsigned long n_lines)
 {
 	if (from_begin)
 		return lines_to_offset_from_begin(f, n_lines);
@@ -194,7 +193,7 @@ static off_t lines_to_offset(struct file_struct *f, unsigned int n_lines)
 		return lines_to_offset_from_end(f, n_lines);
 }
 
-static off_t bytes_to_offset(struct file_struct *f, unsigned int n_bytes)
+static off_t bytes_to_offset(struct file_struct *f, unsigned long n_bytes)
 {
 	/* tail everything for 'inotail -c +0' */
 	if (from_begin && n_bytes == 0)
@@ -218,7 +217,7 @@ static ssize_t tail_pipe(struct file_struct *f)
 	return rc;
 }
 
-static int tail_file(struct file_struct *f, unsigned int n_units, char mode, char forever)
+static int tail_file(struct file_struct *f, unsigned long n_units, char mode, char forever)
 {
 	int ret = -1;
 	ssize_t bytes_read = 0;
@@ -406,7 +405,7 @@ int main(int argc, char **argv)
 {
 	int i, c, ret = 0;
 	int n_files;
-	int n_units = DEFAULT_N_LINES;
+	unsigned long n_units = DEFAULT_N_LINES;
 	char forever = 0, mode = M_LINES;
 	char **filenames;
 	struct file_struct *files = NULL;
@@ -421,9 +420,12 @@ int main(int argc, char **argv)
 				from_begin = 1;
 			else if (*optarg == '-')
 				optarg++;
+
+			if (!isdigit(*optarg)) {
+				fprintf(stderr, "Invalid number of lines: %s\n", optarg);
+				exit(EXIT_FAILURE);
+			}
 			n_units = strtoul(optarg, NULL, 0);
-			if (n_units < 0)
-				n_units = 0;
 			break;
                 case 'f':
 			forever = 1;
