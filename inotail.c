@@ -131,7 +131,7 @@ static off_t lines_to_offset_from_end(struct file_struct *f, unsigned long n_lin
 		lseek(f->fd, offset, SEEK_SET);
 
 		rc = read(f->fd, &buf, block_size);
-		if (rc < 0) {
+		if (unlikely(rc < 0)) {
 			fprintf(stderr, "Error: Could not read from file '%s' (%s)\n", f->name, strerror(errno));
 			return -1;
 		}
@@ -166,7 +166,7 @@ static off_t lines_to_offset_from_begin(struct file_struct *f, unsigned long n_l
 		lseek(f->fd, offset, SEEK_SET);
 
 		rc = read(f->fd, &buf, block_size);
-		if (rc < 0) {
+		if (unlikely(rc < 0)) {
 			fprintf(stderr, "Error: Could not read from file '%s' (%s)\n", f->name, strerror(errno));
 			return -1;
 		} else if (rc < block_size)
@@ -229,7 +229,7 @@ static int tail_file(struct file_struct *f, unsigned long n_units, char mode, ch
 		f->fd = STDIN_FILENO;
 	else {
 		f->fd = open(f->name, O_RDONLY);
-		if (f->fd < 0) {
+		if (unlikely(f->fd < 0)) {
 			fprintf(stderr, "Error: Could not open file '%s' (%s)\n", f->name, strerror(errno));
 			return ret;
 		}
@@ -257,7 +257,7 @@ static int tail_file(struct file_struct *f, unsigned long n_units, char mode, ch
 		offset = bytes_to_offset(f, n_units);
 
 	/* We only get negative offsets on errors */
-	if (offset < 0)
+	if (unlikely(offset < 0))
 		goto err;
 
 	if (verbose)
@@ -345,7 +345,7 @@ static int watch_files(struct file_struct *files, int n_files)
 	if (errno == ENOSYS) {
 		fprintf(stderr, "Error: Inotify is not supported by the kernel you're currently running.\n");
 		exit(EXIT_FAILURE);
-	} else if (ifd < 0) {
+	} else if (unlikely(ifd < 0)) {
 		fprintf(stderr, "Error: Could not initialize Inotify (%s)\n", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
@@ -368,7 +368,7 @@ static int watch_files(struct file_struct *files, int n_files)
 		int ev_idx = 0;
 
 		len = read(ifd, &buf, (n_files * INOTIFY_BUFLEN));
-		if (len < 0) {
+		if (unlikely(len < 0)) {
 			fprintf(stderr, "Error: Could not read inotify events (%s)\n", strerror(errno));
 			exit(EXIT_FAILURE);
 		}
