@@ -11,7 +11,7 @@ prefix	= /usr/local
 DESTDIR	=
 
 CC	:= gcc
-CFLAGS	:= $(CFLAGS) -Wall -pipe -D_USE_SOURCE -DVERSION="\"$(VERSION)\"" \
+CFLAGS	:= $(CFLAGS) -W -Wall -pipe -D_USE_SOURCE -DVERSION="\"$(VERSION)\"" \
 	   -Wstrict-prototypes -Wsign-compare -Wshadow -Wchar-subscripts \
 	   -Wmissing-declarations -Wpointer-arith -Wcast-align -Wmissing-prototypes
 LDFLAGS	:=
