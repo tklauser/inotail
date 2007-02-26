@@ -42,17 +42,15 @@
 # define __NR_inotify_add_watch	152
 # define __NR_inotify_rm_watch	156
 #elif defined (__arm__)
-# define __NR_OABI_SYSCALL_BASE	0x900000
-# if defined(__thumb__) || defined(__ARM_EABI__)
-#  define __NR_SYSCALL_BASE	0
-# else
-#  define __NR_SYSCALL_BASE	__NR_OABI_SYSCALL_BASE
-# endif
 # define __NR_inotify_init	(__NR_SYSCALL_BASE + 316)
 # define __NR_inotify_add_watch	(__NR_SYSCALL_BASE + 317)
 # define __NR_inotify_rm_watch	(__NR_SYSCALL_BASE + 318)
 #elif defined (__sh__)
 # define __NR_inotify_init	290
+# define __NR_inotify_add_watch	291
+# define __NR_inotify_rm_watch	292
+#elif defined (__m32r__)
+# define __NR_inotify_init      290
 # define __NR_inotify_add_watch	291
 # define __NR_inotify_rm_watch	292
 #elif defined (__hppa__)
@@ -86,19 +84,19 @@
 #endif
 #endif	/* __NR_inotify_init */
 
-static inline int inotify_init (void)
+static inline int inotify_init(void)
 {
-	return syscall (__NR_inotify_init);
+	return syscall(__NR_inotify_init);
 }
 
-static inline int inotify_add_watch (int fd, const char *name, __u32 mask)
+static inline int inotify_add_watch(int fd, const char *name, __u32 mask)
 {
-	return syscall (__NR_inotify_add_watch, fd, name, mask);
+	return syscall(__NR_inotify_add_watch, fd, name, mask);
 }
 
-static inline int inotify_rm_watch (int fd, __u32 wd)
+static inline int inotify_rm_watch(int fd, __u32 wd)
 {
-	return syscall (__NR_inotify_rm_watch, fd, wd);
+	return syscall(__NR_inotify_rm_watch, fd, wd);
 }
 
 #endif /* _LINUX_INOTIFY_SYSCALLS_H */
