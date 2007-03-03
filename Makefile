@@ -19,8 +19,8 @@ LDFLAGS	:=
 # Compile with 'make DEBUG=true' to enable debugging
 DEBUG = false
 ifeq ($(strip $(DEBUG)),true)
-	CFLAGS  += -g -DDEBUG -fmudflap
-	LDFLAGS += -lmudflap
+	CFLAGS  += -g -DDEBUG
+	LDFLAGS +=
 endif
 
 all: inotail
