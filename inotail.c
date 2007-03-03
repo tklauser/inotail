@@ -55,13 +55,13 @@ static int n_ignored = 0;
 
 /* Command line options */
 static const struct option long_opts[] = {
-	{"bytes", required_argument, NULL, 'c'},
-	{"follow", optional_argument, NULL, 'f'},
-	{"lines", required_argument, NULL, 'n'},
-	{"verbose", no_argument, NULL, 'v'},
-	{"help", no_argument, NULL, 'h'},
-	{"version", no_argument, NULL, 'V'},
-	{NULL, 0, NULL, 0}
+	{ "bytes", required_argument, NULL, 'c' },
+	{ "follow", optional_argument, NULL, 'f' },
+	{ "lines", required_argument, NULL, 'n' },
+	{ "verbose", no_argument, NULL, 'v' },
+	{ "help", no_argument, NULL, 'h' },
+	{ "version", no_argument, NULL, 'V' },
+	{ NULL, 0, NULL, 0 }
 };
 
 static void usage(const int status)
@@ -291,13 +291,7 @@ static int handle_inotify_event(struct inotify_event *inev, struct file_struct *
 		ssize_t rc;
 		char fbuf[BUFFER_SIZE];
 		struct stat finfo;
-#if 0
-		f->fd = open(f->name, O_RDONLY);
-		if (f->fd < 0) {
-			fprintf(stderr, "Error: Could not open file '%s' (%s)\n", f->name, strerror(errno));
-			goto ignore;
-		}
-#endif
+
 		if (verbose)
 			write_header(f->name);
 
@@ -312,9 +306,7 @@ static int handle_inotify_event(struct inotify_event *inev, struct file_struct *
 		}
 
 		f->st_size = finfo.st_size;
-#if 0
-		close(f->fd);
-#endif
+
 		return ret;
 	} else if (inev->mask & IN_DELETE_SELF) {
 		fprintf(stderr, "File '%s' deleted.\n", f->name);
