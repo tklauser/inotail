@@ -88,8 +88,12 @@ static inline void setup_file(struct file_struct *f)
 	f->i_watch = -1;
 }
 
-static inline void ignore_file(struct file_struct *f)
+static void ignore_file(struct file_struct *f)
 {
+	if (f->fd != -1) {
+		close(f->fd);
+		f->fd = -1;
+	}
 	f->ignore = 1;
 	n_ignored++;
 }
@@ -145,7 +149,6 @@ static off_t lines_to_offset_from_end(struct file_struct *f, unsigned long n_lin
 	}
 
 	return offset;
-
 }
 
 static off_t lines_to_offset_from_begin(struct file_struct *f, unsigned long n_lines)
@@ -219,7 +222,6 @@ static ssize_t tail_pipe(struct file_struct *f)
 
 static int tail_file(struct file_struct *f, unsigned long n_units, char mode, char forever)
 {
-	int ret = -1;
 	ssize_t bytes_read = 0;
 	off_t offset = 0;
 	char buf[BUFFER_SIZE];
@@ -231,21 +233,24 @@ static int tail_file(struct file_struct *f, unsigned long n_units, char mode, ch
 		f->fd = open(f->name, O_RDONLY);
 		if (unlikely(f->fd < 0)) {
 			fprintf(stderr, "Error: Could not open file '%s' (%s)\n", f->name, strerror(errno));
-			return ret;
+			ignore_file(f);
+			return -1;
 		}
 	}
 
 	if (fstat(f->fd, &finfo) < 0) {
 		fprintf(stderr, "Error: Could not stat file '%s' (%s)\n", f->name, strerror(errno));
-		goto err;
+		ignore_file(f);
+		return -1;
 	}
 
 	if (!IS_TAILABLE(finfo.st_mode)) {
 		fprintf(stderr, "Error: '%s' of unsupported file type\n", f->name);
-		goto err;
+		ignore_file(f);
+		return -1;
 	}
 
-	/* We cannot seek on these */
+	/* Cannot seek on these */
 	if (IS_PIPELIKE(finfo.st_mode) || f->fd == STDIN_FILENO)
 		return tail_pipe(f);
 
@@ -257,8 +262,10 @@ static int tail_file(struct file_struct *f, unsigned long n_units, char mode, ch
 		offset = bytes_to_offset(f, n_units);
 
 	/* We only get negative offsets on errors */
-	if (unlikely(offset < 0))
-		goto err;
+	if (unlikely(offset < 0)) {
+		ignore_file(f);
+		return -1;
+	}
 
 	if (verbose)
 		write_header(f->name);
@@ -268,19 +275,14 @@ static int tail_file(struct file_struct *f, unsigned long n_units, char mode, ch
 	while ((bytes_read = read(f->fd, &buf, BUFFER_SIZE)) > 0)
 		write(STDOUT_FILENO, buf, (size_t) bytes_read);
 
-	ret = 0;
+	if (!forever) {
+		if (close(f->fd) < 0) {
+			fprintf(stderr, "Error: Could not close file '%s' (%s)\n", f->name, strerror(errno));
+			return -1;
+		}
+	} /* Let the fd open otherwise, we'll need it */
 
-	/* Let the fd open, we'll need it */
-	if (forever)
-		return ret;
-
-err:
-	if (close(f->fd) < 0) {
-		fprintf(stderr, "Error: Could not close file '%s' (%s)\n", f->name, strerror(errno));
-		ret = -1;
-	}
-
-	return ret;
+	return 0;
 }
 
 static int handle_inotify_event(struct inotify_event *inev, struct file_struct *f)
@@ -318,11 +320,6 @@ static int handle_inotify_event(struct inotify_event *inev, struct file_struct *
 	}
 
 ignore:
-	if (close(f->fd) < 0) {
-		fprintf(stderr, "Error: Could not close file '%s' (%s)\n", f->name, strerror(errno));
-		ret = -1;
-	}
-
 	ignore_file(f);
 
 	return ret;
