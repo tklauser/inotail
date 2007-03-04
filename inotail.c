@@ -405,9 +405,10 @@ int main(int argc, char **argv)
 			mode = M_BYTES;
 			/* fall through */
 		case 'n':
-			if (*optarg == '+')
+			if (*optarg == '+') {
 				from_begin = 1;
-			else if (*optarg == '-')
+				optarg++;
+			} else if (*optarg == '-')
 				optarg++;
 
 			if (!isdigit(*optarg)) {
