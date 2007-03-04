@@ -123,8 +123,8 @@ static off_t lines_to_offset_from_end(struct file_struct *f, unsigned long n_lin
 	n_lines++;	/* We also count the last \n */
 
 	while (offset > 0 && n_lines > 0) {
-		int i, rc;
-		int block_size = BUFFER_SIZE;	/* Size of the current block we're reading */
+		int i;
+		ssize_t rc, block_size = BUFFER_SIZE;	/* Size of the current block we're reading */
 
 		if (offset < BUFFER_SIZE)
 			block_size = offset;
