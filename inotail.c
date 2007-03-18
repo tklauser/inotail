@@ -425,7 +425,7 @@ int main(int argc, char **argv)
 			break;
 		case 'V':
 			fprintf(stdout, "%s %s\n", PROGRAM_NAME, VERSION);
-			return 0;
+			exit(EXIT_SUCCESS);
 		case 'h':
 			usage(EXIT_SUCCESS);
 		default:
