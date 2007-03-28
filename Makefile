@@ -7,8 +7,7 @@
 VERSION	= 0.2
 
 # Paths
-prefix	= /usr/local
-DESTDIR	=
+DESTDIR	= /usr/local
 
 CC	:= gcc
 CFLAGS	:= $(CFLAGS) -W -Wall -pipe -D_USE_SOURCE -DVERSION="\"$(VERSION)\"" \
@@ -30,8 +29,8 @@ inotail: inotail.o
 	$(CC) $(CFLAGS) -c $< -o $@
 
 install: inotail
-	install -m 775 -D inotail $(DESTDIR)$(prefix)/bin/inotail
-	install -m 644 -D inotail.1 $(DESTDIR)$(prefix)/share/man/man1/inotail.1
+	install -m 775 -D inotail $(DESTDIR)/bin/inotail
+	install -m 644 -D inotail.1 $(DESTDIR)/share/man/man1/inotail.1
 
 cscope:
 	cscope -b
