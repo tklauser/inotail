@@ -15,13 +15,11 @@ CC	:= gcc
 CFLAGS	:= $(CFLAGS) -W -Wall -pipe -D_USE_SOURCE -DVERSION="\"$(VERSION)\"" \
 	   -Wstrict-prototypes -Wsign-compare -Wshadow -Wchar-subscripts \
 	   -Wmissing-declarations -Wpointer-arith -Wcast-align -Wmissing-prototypes
-LDFLAGS	:=
 
 # Compile with 'make DEBUG=true' to enable debugging
 DEBUG = false
 ifeq ($(strip $(DEBUG)),true)
 	CFLAGS  += -g -DDEBUG
-	LDFLAGS +=
 endif
 
 all: inotail
