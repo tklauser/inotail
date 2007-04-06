@@ -7,9 +7,9 @@
 VERSION	= 0.2
 
 # Paths
-DESTDIR	= /usr/local
-BINDIR	= $(DESTDIR)/bin
-MANDIR	= $(DESTDIR)/share/man/man1
+prefix	= /usr/local
+BINDIR	= $(prefix)/bin
+MANDIR	= $(prefix)/share/man/man1
 
 CC	:= gcc
 CFLAGS	:= $(CFLAGS) -W -Wall -pipe -D_USE_SOURCE -DVERSION="\"$(VERSION)\"" \
