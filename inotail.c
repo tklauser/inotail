@@ -198,12 +198,18 @@ static off_t lines_to_offset(struct file_struct *f, unsigned long n_lines)
 
 static off_t bytes_to_offset(struct file_struct *f, unsigned long n_bytes)
 {
-	/* tail everything for 'inotail -c +0' or if n_bytes greater than the
-	 * total amount of chars in the file */
-	if ((from_begin && n_bytes == 0) || ((off_t) n_bytes > f->st_size))
-		return 0;
-	else
-		return (from_begin ? ((off_t) n_bytes - 1) : (f->st_size - (off_t) n_bytes));
+	off_t offset = 0;
+
+	/* tail everything for 'inotail -c +0' */
+	if (from_begin) {
+		if (n_bytes > 0)
+			offset = (off_t) n_bytes - 1;
+	} else {
+		if ((off_t) n_bytes < f->st_size)
+			offset = f->st_size - (off_t) n_bytes;
+	}
+
+	return offset;
 }
 
 static ssize_t tail_pipe(struct file_struct *f)
