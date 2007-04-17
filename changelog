@@ -5,7 +5,7 @@ inotail 0.3
   * Only print the filename once when the -v option is specified
   * Various small fixes and cleanups
 
-  -- Tobias Klauser <tklauser@distanz.ch> 2007-03-28 12:20
+  -- Tobias Klauser <tklauser@distanz.ch> 2007-04-17 13:44
 
 inotail 0.2
 
