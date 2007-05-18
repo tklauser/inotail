@@ -31,6 +31,10 @@ inotail: inotail.o
 install: inotail
 	install -m 775 -D inotail $(BINDIR)/inotail
 	install -m 644 -D inotail.1 $(MANDIR)/inotail.1
+	gzip -9 $(MANDIR)/inotail.1
+
+uninstall:
+	rm $(BINDIR)/inotail $(MANDIR)/inotail.1*
 
 cscope:
 	cscope -b
