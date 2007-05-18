@@ -134,7 +134,7 @@ static off_t lines_to_offset_from_end(struct file_struct *f, unsigned long n_lin
 
 		lseek(f->fd, offset, SEEK_SET);
 
-		rc = read(f->fd, &buf, block_size);
+		rc = read(f->fd, buf, block_size);
 		if (unlikely(rc < 0)) {
 			fprintf(stderr, "Error: Could not read from file '%s' (%s)\n", f->name, strerror(errno));
 			return -1;
@@ -168,7 +168,7 @@ static off_t lines_to_offset_from_begin(struct file_struct *f, unsigned long n_l
 
 		lseek(f->fd, offset, SEEK_SET);
 
-		rc = read(f->fd, &buf, block_size);
+		rc = read(f->fd, buf, block_size);
 		if (unlikely(rc < 0)) {
 			fprintf(stderr, "Error: Could not read from file '%s' (%s)\n", f->name, strerror(errno));
 			return -1;
@@ -221,7 +221,7 @@ static ssize_t tail_pipe(struct file_struct *f)
 		write_header(f->name);
 
 	/* We will just tail everything here */
-	while ((rc = read(f->fd, &buf, BUFFER_SIZE)) > 0)
+	while ((rc = read(f->fd, buf, BUFFER_SIZE)) > 0)
 		write(STDOUT_FILENO, buf, (size_t) rc);
 
 	return rc;
@@ -279,7 +279,7 @@ static int tail_file(struct file_struct *f, unsigned long n_units, char mode, ch
 
 	lseek(f->fd, offset, SEEK_SET);
 
-	while ((bytes_read = read(f->fd, &buf, BUFFER_SIZE)) > 0)
+	while ((bytes_read = read(f->fd, buf, BUFFER_SIZE)) > 0)
 		write(STDOUT_FILENO, buf, (size_t) bytes_read);
 
 	if (!forever) {
@@ -305,7 +305,7 @@ static int handle_inotify_event(struct inotify_event *inev, struct file_struct *
 			write_header(f->name);
 
 		lseek(f->fd, f->st_size, SEEK_SET);	/* Old file size */
-		while ((rc = read(f->fd, &fbuf, BUFFER_SIZE)) != 0)
+		while ((rc = read(f->fd, fbuf, BUFFER_SIZE)) != 0)
 			write(STDOUT_FILENO, fbuf, (size_t) rc);
 
 		if (fstat(f->fd, &finfo) < 0) {
@@ -363,7 +363,7 @@ static int watch_files(struct file_struct *files, int n_files)
 		ssize_t len;
 		int ev_idx = 0;
 
-		len = read(ifd, &buf, (n_files * INOTIFY_BUFLEN));
+		len = read(ifd, buf, (n_files * INOTIFY_BUFLEN));
 		if (unlikely(len < 0)) {
 			fprintf(stderr, "Error: Could not read inotify events (%s)\n", strerror(errno));
 			exit(EXIT_FAILURE);
