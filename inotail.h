@@ -7,6 +7,8 @@
 #ifndef _INOTAIL_H
 #define _INOTAIL_H
 
+#include <sys/types.h>
+
 /* Number of items to tail. */
 #define DEFAULT_N_LINES 10
 
@@ -18,6 +20,7 @@ struct file_struct {
 	char *name;		/* Name of file (or '-' for stdin) */
 	int fd;			/* File descriptor (or -1 if file is not open */
 	off_t st_size;		/* File size */
+	blksize_t st_blksize;	/* Blocksize for filesystem I/O */
 	unsigned ignore;	/* Whether to ignore the file in further processing */
 	int i_watch;		/* Inotify watch associated with file_struct */
 };

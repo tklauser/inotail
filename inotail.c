@@ -40,7 +40,7 @@
 #include "inotail.h"
 
 #define PROGRAM_NAME "inotail"
-#define BUFFER_SIZE 4096
+#define DEFAULT_BUFFER_SIZE 4096
 /* inotify event buffer length for one file */
 #define INOTIFY_BUFLEN (4 * sizeof(struct inotify_event))
 
@@ -84,6 +84,7 @@ static inline void setup_file(struct file_struct *f)
 {
 	f->fd = -1;
 	f->st_size = 0;
+	f->st_blksize = DEFAULT_BUFFER_SIZE;
 	f->ignore = 0;
 	f->i_watch = -1;
 }
@@ -115,18 +116,34 @@ static void write_header(char *filename)
 	last = filename;
 }
 
+static char *alloc_buffer(struct file_struct *f)
+{
+	char *buf;
+
+	buf = malloc(f->st_blksize);
+	if (!buf) {
+		fprintf(stderr, "Error: Failed to allocate memory (%s)\n", strerror(errno));
+		exit(EXIT_FAILURE);
+	}
+
+	return buf;
+}
+
 static off_t lines_to_offset_from_end(struct file_struct *f, unsigned long n_lines)
 {
-	char buf[BUFFER_SIZE];
+	char *buf;
 	off_t offset = f->st_size;
+	ssize_t buffer_size = f->st_blksize;
+
+	buf = alloc_buffer(f);
 
 	n_lines++;	/* We also count the last \n */
 
 	while (offset > 0 && n_lines > 0) {
 		int i;
-		ssize_t rc, block_size = BUFFER_SIZE;	/* Size of the current block we're reading */
+		ssize_t rc, block_size = buffer_size;	/* Size of the current block we're reading */
 
-		if (offset < BUFFER_SIZE)
+		if (offset < buffer_size)
 			block_size = offset;
 
 		/* Start of current block */
@@ -137,24 +154,30 @@ static off_t lines_to_offset_from_end(struct file_struct *f, unsigned long n_lin
 		rc = read(f->fd, buf, block_size);
 		if (unlikely(rc < 0)) {
 			fprintf(stderr, "Error: Could not read from file '%s' (%s)\n", f->name, strerror(errno));
+			free(buf);
 			return -1;
 		}
 
 		for (i = block_size - 1; i > 0; i--) {
 			if (buf[i] == '\n') {
-				if (--n_lines == 0)
+				if (--n_lines == 0) {
+					free(buf);
 					return offset += i + 1; /* We don't want the first \n */
+				}
 			}
 		}
 	}
 
+	free(buf);
 	return offset;
 }
 
 static off_t lines_to_offset_from_begin(struct file_struct *f, unsigned long n_lines)
 {
-	char buf[BUFFER_SIZE];
+	char *buf;
 	off_t offset = 0;
+
+	buf = alloc_buffer(f);
 
 	/* tail everything for 'inotail -n +0' */
 	if (n_lines == 0)
@@ -164,27 +187,31 @@ static off_t lines_to_offset_from_begin(struct file_struct *f, unsigned long n_l
 
 	while (offset <= f->st_size && n_lines > 0) {
 		int i;
-		ssize_t rc, block_size = BUFFER_SIZE;
+		ssize_t rc, block_size = f->st_blksize;
 
 		lseek(f->fd, offset, SEEK_SET);
 
 		rc = read(f->fd, buf, block_size);
 		if (unlikely(rc < 0)) {
 			fprintf(stderr, "Error: Could not read from file '%s' (%s)\n", f->name, strerror(errno));
+			free(buf);
 			return -1;
 		} else if (rc < block_size)
 			block_size = rc;
 
 		for (i = 0; i < block_size; i++) {
 			if (buf[i] == '\n') {
-				if (--n_lines == 0)
+				if (--n_lines == 0) {
+					free(buf);
 					return offset + i + 1;
+				}
 			}
 		}
 
 		offset += block_size;
 	}
 
+	free(buf);
 	return offset;
 }
 
@@ -214,14 +241,16 @@ static off_t bytes_to_offset(struct file_struct *f, unsigned long n_bytes)
 
 static ssize_t tail_pipe(struct file_struct *f)
 {
-	ssize_t rc;
-	char buf[BUFFER_SIZE];
+	ssize_t rc, buffer_size = f->st_blksize;
+	char *buf;
+
+	buf = alloc_buffer(f);
 
 	if (verbose)
 		write_header(f->name);
 
 	/* We will just tail everything here */
-	while ((rc = read(f->fd, buf, BUFFER_SIZE)) > 0) {
+	while ((rc = read(f->fd, buf, buffer_size)) > 0) {
 		if (write(STDOUT_FILENO, buf, (size_t) rc) < 0) {
 			/* e.g. when writing to a pipe which gets closed */
 			fprintf(stderr, "Error: Could not write to stdout (%s)\n", strerror(errno));
@@ -229,6 +258,7 @@ static ssize_t tail_pipe(struct file_struct *f)
 		}
 	}
 
+	free(buf);
 	return rc;
 }
 
@@ -236,8 +266,11 @@ static int tail_file(struct file_struct *f, unsigned long n_units, char mode, ch
 {
 	ssize_t bytes_read = 0;
 	off_t offset = 0;
-	char buf[BUFFER_SIZE];
+	char *buf;
+	ssize_t buffer_size;
 	struct stat finfo;
+
+	buf = alloc_buffer(f);
 
 	if (strcmp(f->name, "-") == 0)
 		f->fd = STDIN_FILENO;
@@ -267,6 +300,7 @@ static int tail_file(struct file_struct *f, unsigned long n_units, char mode, ch
 		return tail_pipe(f);
 
 	f->st_size = finfo.st_size;
+	f->st_blksize = finfo.st_blksize;	/* TODO: Can this value be 0 or negative? */
 
 	if (mode == M_LINES)
 		offset = lines_to_offset(f, n_units);
@@ -284,7 +318,8 @@ static int tail_file(struct file_struct *f, unsigned long n_units, char mode, ch
 
 	lseek(f->fd, offset, SEEK_SET);
 
-	while ((bytes_read = read(f->fd, buf, BUFFER_SIZE)) > 0)
+	buffer_size = f->st_blksize;
+	while ((bytes_read = read(f->fd, buf, buffer_size)) > 0)
 		write(STDOUT_FILENO, buf, (size_t) bytes_read);
 
 	if (!forever) {
@@ -302,15 +337,17 @@ static int handle_inotify_event(struct inotify_event *inev, struct file_struct *
 	int ret = 0;
 
 	if (inev->mask & IN_MODIFY) {
-		ssize_t rc;
-		char fbuf[BUFFER_SIZE];
+		ssize_t rc, buffer_size = f->st_blksize;
+		char *fbuf;
 		struct stat finfo;
+
+		fbuf = alloc_buffer(f);
 
 		if (verbose)
 			write_header(f->name);
 
 		lseek(f->fd, f->st_size, SEEK_SET);	/* Old file size */
-		while ((rc = read(f->fd, fbuf, BUFFER_SIZE)) != 0)
+		while ((rc = read(f->fd, fbuf, buffer_size)) != 0)
 			write(STDOUT_FILENO, fbuf, (size_t) rc);
 
 		if (fstat(f->fd, &finfo) < 0) {
@@ -321,6 +358,7 @@ static int handle_inotify_event(struct inotify_event *inev, struct file_struct *
 
 		f->st_size = finfo.st_size;
 
+		free(fbuf);
 		return ret;
 	} else if (inev->mask & IN_DELETE_SELF) {
 		fprintf(stderr, "File '%s' deleted.\n", f->name);
@@ -460,15 +498,21 @@ int main(int argc, char **argv)
 		   specified and standard input is a pipe. */
 		if (forever) {
 			struct stat finfo;
-			if (fstat(STDIN_FILENO, &finfo) == 0
-					&& IS_PIPELIKE(finfo.st_mode))
+			int rc = fstat(STDIN_FILENO, &finfo);
+
+			if (rc == -1) {
+				fprintf(stderr, "Error: Could not stat stdin (%s)\n", strerror(errno));
+				exit(EXIT_FAILURE);
+			}
+
+			if (rc == 0 && IS_PIPELIKE(finfo.st_mode))
 				forever = 0;
 		}
 	}
 
 	files = malloc(n_files * sizeof(struct file_struct));
 	if (unlikely(!files)) {
-		fprintf(stderr, "Error: Not enough memory (%s)\n", strerror(errno));
+		fprintf(stderr, "Error: Could not allocate memory (%s)\n", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
 
