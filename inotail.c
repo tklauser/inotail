@@ -253,6 +253,7 @@ static ssize_t tail_pipe(struct file_struct *f)
 		if (write(STDOUT_FILENO, buf, (size_t) rc) < 0) {
 			/* e.g. when writing to a pipe which gets closed */
 			fprintf(stderr, "Error: Could not write to stdout (%s)\n", strerror(errno));
+			free(buf);
 			return -1;
 		}
 	}
@@ -265,11 +266,9 @@ static int tail_file(struct file_struct *f, unsigned long n_units, char mode, ch
 {
 	ssize_t bytes_read = 0;
 	off_t offset = 0;
-	char *buf;
+	char *buf = NULL;
 	ssize_t buffer_size;
 	struct stat finfo;
-
-	buf = alloc_buffer(f);
 
 	if (strcmp(f->name, "-") == 0)
 		f->fd = STDIN_FILENO;
@@ -298,6 +297,8 @@ static int tail_file(struct file_struct *f, unsigned long n_units, char mode, ch
 	if (IS_PIPELIKE(finfo.st_mode) || f->fd == STDIN_FILENO)
 		return tail_pipe(f);
 
+	buf = alloc_buffer(f);
+
 	f->st_size = finfo.st_size;
 	f->st_blksize = finfo.st_blksize;	/* TODO: Can this value be 0 or negative? */
 
@@ -309,6 +310,7 @@ static int tail_file(struct file_struct *f, unsigned long n_units, char mode, ch
 	/* We only get negative offsets on errors */
 	if (unlikely(offset < 0)) {
 		ignore_file(f);
+		free(buf);
 		return -1;
 	}
 
@@ -324,6 +326,7 @@ static int tail_file(struct file_struct *f, unsigned long n_units, char mode, ch
 	if (!forever) {
 		if (close(f->fd) < 0) {
 			fprintf(stderr, "Error: Could not close file '%s' (%s)\n", f->name, strerror(errno));
+			free(buf);
 			return -1;
 		}
 	} /* Let the fd open otherwise, we'll need it */
@@ -333,11 +336,11 @@ static int tail_file(struct file_struct *f, unsigned long n_units, char mode, ch
 
 static int handle_inotify_event(struct inotify_event *inev, struct file_struct *f)
 {
+	char *fbuf;
 	int ret = 0;
 
 	if (inev->mask & IN_MODIFY) {
 		ssize_t rc, buffer_size = f->st_blksize;
-		char *fbuf;
 		struct stat finfo;
 
 		fbuf = alloc_buffer(f);
@@ -370,7 +373,7 @@ static int handle_inotify_event(struct inotify_event *inev, struct file_struct *
 
 ignore:
 	ignore_file(f);
-
+	free(fbuf);
 	return ret;
 }
 
