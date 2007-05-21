@@ -133,7 +133,6 @@ static off_t lines_to_offset_from_end(struct file_struct *f, unsigned long n_lin
 {
 	char *buf;
 	off_t offset = f->st_size;
-	ssize_t buffer_size = f->st_blksize;
 
 	buf = alloc_buffer(f);
 
@@ -141,9 +140,9 @@ static off_t lines_to_offset_from_end(struct file_struct *f, unsigned long n_lin
 
 	while (offset > 0 && n_lines > 0) {
 		int i;
-		ssize_t rc, block_size = buffer_size;	/* Size of the current block we're reading */
+		ssize_t rc, block_size = f->st_blksize;	/* Size of the current block we're reading */
 
-		if (offset < buffer_size)
+		if (offset < f->st_blksize)
 			block_size = offset;
 
 		/* Start of current block */
