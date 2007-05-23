@@ -116,11 +116,11 @@ static void write_header(char *filename)
 	last = filename;
 }
 
-static char *alloc_buffer(struct file_struct *f)
+static char *alloc_buffer(size_t buffer_size)
 {
 	char *buf;
 
-	buf = malloc(f->st_blksize);
+	buf = malloc(buffer_size);
 	if (!buf) {
 		fprintf(stderr, "Error: Failed to allocate memory (%s)\n", strerror(errno));
 		exit(EXIT_FAILURE);
@@ -131,10 +131,8 @@ static char *alloc_buffer(struct file_struct *f)
 
 static off_t lines_to_offset_from_end(struct file_struct *f, unsigned long n_lines)
 {
-	char *buf;
 	off_t offset = f->st_size;
-
-	buf = alloc_buffer(f);
+	char *buf = alloc_buffer(f->st_blksize);
 
 	n_lines++;	/* We also count the last \n */
 
@@ -181,7 +179,7 @@ static off_t lines_to_offset_from_begin(struct file_struct *f, unsigned long n_l
 		return 0;
 
 	n_lines--;
-	buf = alloc_buffer(f);
+	buf = alloc_buffer(f->st_blksize);
 
 	while (offset <= f->st_size && n_lines > 0) {
 		int i;
@@ -239,21 +237,19 @@ static off_t bytes_to_offset(struct file_struct *f, unsigned long n_bytes)
 
 static ssize_t tail_pipe(struct file_struct *f)
 {
-	ssize_t rc, buffer_size = f->st_blksize;
-	char *buf;
-
-	buf = alloc_buffer(f);
+	ssize_t rc;
+	char *buf = alloc_buffer(f->st_blksize);
 
 	if (verbose)
 		write_header(f->name);
 
 	/* We will just tail everything here */
-	while ((rc = read(f->fd, buf, buffer_size)) > 0) {
+	while ((rc = read(f->fd, buf, f->st_blksize)) > 0) {
 		if (write(STDOUT_FILENO, buf, (size_t) rc) < 0) {
 			/* e.g. when writing to a pipe which gets closed */
 			fprintf(stderr, "Error: Could not write to stdout (%s)\n", strerror(errno));
-			free(buf);
-			return -1;
+			rc = -1;
+			break;
 		}
 	}
 
@@ -265,8 +261,7 @@ static int tail_file(struct file_struct *f, unsigned long n_units, char mode, ch
 {
 	ssize_t bytes_read = 0;
 	off_t offset = 0;
-	char *buf = NULL;
-	ssize_t buffer_size;
+	char *buf;
 	struct stat finfo;
 
 	if (strcmp(f->name, "-") == 0)
@@ -296,10 +291,10 @@ static int tail_file(struct file_struct *f, unsigned long n_units, char mode, ch
 	if (IS_PIPELIKE(finfo.st_mode) || f->fd == STDIN_FILENO)
 		return tail_pipe(f);
 
-	buf = alloc_buffer(f);
-
 	f->st_size = finfo.st_size;
 	f->st_blksize = finfo.st_blksize;	/* TODO: Can this value be 0 or negative? */
+
+	buf = alloc_buffer(f->st_blksize);
 
 	if (mode == M_LINES)
 		offset = lines_to_offset(f, n_units);
@@ -318,8 +313,7 @@ static int tail_file(struct file_struct *f, unsigned long n_units, char mode, ch
 
 	lseek(f->fd, offset, SEEK_SET);
 
-	buffer_size = f->st_blksize;
-	while ((bytes_read = read(f->fd, buf, buffer_size)) > 0)
+	while ((bytes_read = read(f->fd, buf, f->st_blksize)) > 0)
 		write(STDOUT_FILENO, buf, (size_t) bytes_read);
 
 	if (!forever) {
@@ -330,6 +324,7 @@ static int tail_file(struct file_struct *f, unsigned long n_units, char mode, ch
 		}
 	} /* Let the fd open otherwise, we'll need it */
 
+	free(buf);
 	return 0;
 }
 
@@ -339,16 +334,16 @@ static int handle_inotify_event(struct inotify_event *inev, struct file_struct *
 	int ret = 0;
 
 	if (inev->mask & IN_MODIFY) {
-		ssize_t rc, buffer_size = f->st_blksize;
+		ssize_t rc;
 		struct stat finfo;
 
-		fbuf = alloc_buffer(f);
+		fbuf = alloc_buffer(f->st_blksize);
 
 		if (verbose)
 			write_header(f->name);
 
 		lseek(f->fd, f->st_size, SEEK_SET);	/* Old file size */
-		while ((rc = read(f->fd, fbuf, buffer_size)) != 0)
+		while ((rc = read(f->fd, fbuf, f->st_blksize)) != 0)
 			write(STDOUT_FILENO, fbuf, (size_t) rc);
 
 		if (fstat(f->fd, &finfo) < 0) {
