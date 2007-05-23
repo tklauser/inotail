@@ -382,7 +382,9 @@ static int watch_files(struct file_struct *files, int n_files)
 
 			/* Which file has produced the event? */
 			for (i = 0; i < n_files; i++) {
-				if (!files[i].ignore && files[i].fd >= 0 && files[i].i_watch == inev->wd) {
+				if (!files[i].ignore
+						&& files[i].fd >= 0
+						&& files[i].i_watch == inev->wd) {
 					f = &files[i];
 					break;
 				}
@@ -399,7 +401,6 @@ static int watch_files(struct file_struct *files, int n_files)
 	}
 
 	close(ifd);
-
 	return -1;
 }
 
