@@ -222,7 +222,7 @@ static ssize_t tail_pipe(struct file_struct *f)
 
 	/* We will just tail everything here */
 	while ((rc = read(f->fd, buf, BUFFER_SIZE)) > 0) {
-		if (write(STDOUT_FILENO, buf, (size_t) rc) < 0) {
+		if (write(STDOUT_FILENO, buf, (size_t) rc) <= 0) {
 			/* e.g. when writing to a pipe which gets closed */
 			fprintf(stderr, "Error: Could not write to stdout (%s)\n", strerror(errno));
 			return -1;
