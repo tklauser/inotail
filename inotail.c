@@ -132,7 +132,10 @@ static off_t lines_to_offset_from_end(struct file_struct *f, unsigned long n_lin
 		/* Start of current block */
 		offset -= block_size;
 
-		lseek(f->fd, offset, SEEK_SET);
+		if (lseek(f->fd, offset, SEEK_SET) == (off_t) -1) {
+			fprintf(stderr, "Error: Could not seek in file '%s' (%s)\n", f->name, strerror(errno));
+			return -1;
+		}
 
 		rc = read(f->fd, buf, block_size);
 		if (unlikely(rc < 0)) {
@@ -166,7 +169,10 @@ static off_t lines_to_offset_from_begin(struct file_struct *f, unsigned long n_l
 		int i;
 		ssize_t rc, block_size = BUFFER_SIZE;
 
-		lseek(f->fd, offset, SEEK_SET);
+		if (lseek(f->fd, offset, SEEK_SET) == (off_t) -1) {
+			fprintf(stderr, "Error: Could not seek in file '%s' (%s)\n", f->name, strerror(errno));
+			return -1;
+		}
 
 		rc = read(f->fd, buf, block_size);
 		if (unlikely(rc < 0)) {
@@ -220,7 +226,7 @@ static ssize_t tail_pipe(struct file_struct *f)
 	if (verbose)
 		write_header(f->name);
 
-	/* We will just tail everything here */
+	/* FIXME: We will just tail everything here for now */
 	while ((rc = read(f->fd, buf, BUFFER_SIZE)) > 0) {
 		if (write(STDOUT_FILENO, buf, (size_t) rc) <= 0) {
 			/* e.g. when writing to a pipe which gets closed */
@@ -282,7 +288,10 @@ static int tail_file(struct file_struct *f, unsigned long n_units, char mode, ch
 	if (verbose)
 		write_header(f->name);
 
-	lseek(f->fd, offset, SEEK_SET);
+	if (lseek(f->fd, offset, SEEK_SET) == (off_t) -1) {
+		fprintf(stderr, "Error: Could not seek in file '%s' (%s)\n", f->name, strerror(errno));
+		return -1;
+	}
 
 	while ((bytes_read = read(f->fd, buf, BUFFER_SIZE)) > 0)
 		write(STDOUT_FILENO, buf, (size_t) bytes_read);
@@ -309,7 +318,13 @@ static int handle_inotify_event(struct inotify_event *inev, struct file_struct *
 		if (verbose)
 			write_header(f->name);
 
-		lseek(f->fd, f->st_size, SEEK_SET);	/* Old file size */
+		/* Seek to old file size */
+		if (lseek(f->fd, f->st_size, SEEK_SET) == (off_t) -1) {
+			fprintf(stderr, "Error: Could not seek in file '%s' (%s)\n", f->name, strerror(errno));
+			ret = -1;
+			goto ignore;
+		}
+
 		while ((rc = read(f->fd, fbuf, BUFFER_SIZE)) != 0)
 			write(STDOUT_FILENO, fbuf, (size_t) rc);
 
