@@ -64,6 +64,18 @@ static const struct option long_opts[] = {
 	{ NULL, 0, NULL, 0 }
 };
 
+static char *emalloc(size_t size)
+{
+	char *ret = malloc(size);
+
+	if (!ret) {
+		fprintf(stderr, "Error: Failed to allocate %d bytes of memory (%s)\n", size, strerror(errno));
+		exit(EXIT_FAILURE);
+	}
+
+	return ret;
+}
+
 static void usage(const int status)
 {
 	fprintf(stdout, "Usage: %s [OPTION]... [FILE]...\n\n"
@@ -116,23 +128,10 @@ static void write_header(char *filename)
 	last = filename;
 }
 
-static char *alloc_buffer(size_t buffer_size)
-{
-	char *buf;
-
-	buf = malloc(buffer_size);
-	if (!buf) {
-		fprintf(stderr, "Error: Failed to allocate memory (%s)\n", strerror(errno));
-		exit(EXIT_FAILURE);
-	}
-
-	return buf;
-}
-
 static off_t lines_to_offset_from_end(struct file_struct *f, unsigned long n_lines)
 {
 	off_t offset = f->st_size;
-	char *buf = alloc_buffer(f->st_blksize);
+	char *buf = emalloc(f->st_blksize);
 
 	n_lines++;	/* We also count the last \n */
 
@@ -179,7 +178,7 @@ static off_t lines_to_offset_from_begin(struct file_struct *f, unsigned long n_l
 		return 0;
 
 	n_lines--;
-	buf = alloc_buffer(f->st_blksize);
+	buf = emalloc(f->st_blksize);
 
 	while (offset <= f->st_size && n_lines > 0) {
 		int i;
@@ -238,7 +237,7 @@ static off_t bytes_to_offset(struct file_struct *f, unsigned long n_bytes)
 static ssize_t tail_pipe(struct file_struct *f)
 {
 	ssize_t rc;
-	char *buf = alloc_buffer(f->st_blksize);
+	char *buf = emalloc(f->st_blksize);
 
 	if (verbose)
 		write_header(f->name);
@@ -294,7 +293,7 @@ static int tail_file(struct file_struct *f, unsigned long n_units, char mode, ch
 	f->st_size = finfo.st_size;
 	f->st_blksize = finfo.st_blksize;	/* TODO: Can this value be 0 or negative? */
 
-	buf = alloc_buffer(f->st_blksize);
+	buf = emalloc(f->st_blksize);
 
 	if (mode == M_LINES)
 		offset = lines_to_offset(f, n_units);
@@ -337,7 +336,7 @@ static int handle_inotify_event(struct inotify_event *inev, struct file_struct *
 		ssize_t rc;
 		struct stat finfo;
 
-		fbuf = alloc_buffer(f->st_blksize);
+		fbuf = emalloc(f->st_blksize);
 
 		if (verbose)
 			write_header(f->name);
