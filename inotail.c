@@ -218,15 +218,11 @@ static off_t bytes_to_offset(struct file_struct *f, unsigned long n_bytes)
 	return offset;
 }
 
-static ssize_t tail_pipe(struct file_struct *f)
+static ssize_t tail_pipe_lines(struct file_struct *f, unsigned long n_lines)
 {
 	ssize_t rc;
 	char buf[BUFFER_SIZE];
 
-	if (verbose)
-		write_header(f->name);
-
-	/* FIXME: We will just tail everything here for now */
 	while ((rc = read(f->fd, buf, BUFFER_SIZE)) > 0) {
 		if (write(STDOUT_FILENO, buf, (size_t) rc) <= 0) {
 			/* e.g. when writing to a pipe which gets closed */
@@ -236,6 +232,11 @@ static ssize_t tail_pipe(struct file_struct *f)
 	}
 
 	return rc;
+}
+
+static ssize_t tail_pipe_bytes(struct file_struct *f, unsigned long n_bytes) {
+	/* TODO: Implement me :) */
+	return 0;
 }
 
 static int tail_file(struct file_struct *f, unsigned long n_units, char mode, char forever)
@@ -269,8 +270,15 @@ static int tail_file(struct file_struct *f, unsigned long n_units, char mode, ch
 	}
 
 	/* Cannot seek on these */
-	if (IS_PIPELIKE(finfo.st_mode) || f->fd == STDIN_FILENO)
-		return tail_pipe(f);
+	if (IS_PIPELIKE(finfo.st_mode) || f->fd == STDIN_FILENO) {
+		if (verbose)
+			write_header(f->name);
+
+		if (mode == M_LINES)
+			return tail_pipe_lines(f, n_units);
+		else
+			return tail_pipe_bytes(f, n_units);
+	}
 
 	f->st_size = finfo.st_size;
 
