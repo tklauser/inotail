@@ -30,7 +30,6 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <getopt.h>
-#include <ctype.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 
@@ -451,7 +450,7 @@ int main(int argc, char **argv)
 			} else if (*optarg == '-')
 				optarg++;
 
-			if (!isdigit(*optarg)) {
+			if (!is_digit(*optarg)) {
 				fprintf(stderr, "Invalid number of lines: %s\n", optarg);
 				exit(EXIT_FAILURE);
 			}
