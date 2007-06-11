@@ -244,8 +244,6 @@ static ssize_t tail_pipe_lines(struct file_struct *f, unsigned long n_lines)
 	ssize_t rc;
 	unsigned long total_lines = 0;
 
-	dprintf("in tail_pipe_lines (%d)\n");
-
 	if (n_lines == 0)
 		return 0;
 
