@@ -31,6 +31,7 @@
 #include <errno.h>
 #include <getopt.h>
 #include <ctype.h>
+#include <assert.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 
@@ -63,6 +64,18 @@ static const struct option long_opts[] = {
 	{ "version", no_argument, NULL, 'V' },
 	{ NULL, 0, NULL, 0 }
 };
+
+static char *emalloc(size_t size)
+{
+	char *ret = malloc(size);
+
+	if (unlikely(!ret)) {
+		fprintf(stderr, "Error: Failed to allocate %d bytes of memory (%s)\n", size, strerror(errno));
+		exit(EXIT_FAILURE);
+	}
+
+	return ret;
+}
 
 static void usage(const int status)
 {
@@ -218,7 +231,122 @@ static off_t bytes_to_offset(struct file_struct *f, unsigned long n_bytes)
 	return offset;
 }
 
+/* For now more or less a copy of pipe_lines() from coreutils tail */
 static ssize_t tail_pipe_lines(struct file_struct *f, unsigned long n_lines)
+{
+	struct line_buf {
+		char buf[BUFFER_SIZE];
+		size_t n_lines;
+		size_t n_bytes;
+		struct line_buf *next;
+	};
+	struct line_buf *first, *last, *tmp;
+	ssize_t rc;
+	unsigned long total_lines = 0;
+
+	dprintf("in tail_pipe_lines (%d)\n");
+
+	if (n_lines == 0)
+		return 0;
+
+	first = last = emalloc(sizeof(struct line_buf));
+	first->n_bytes = first->n_lines = 0;
+	first->next = NULL;
+	tmp = emalloc(sizeof(struct line_buf));
+
+	while (1) {
+		const char *p;
+
+		if ((rc = read(f->fd, tmp->buf, BUFFER_SIZE)) <= 0)
+			break;
+		tmp->n_bytes = rc;
+		tmp->n_lines = 0;
+		tmp->next = NULL;
+		p = tmp->buf;
+
+		/* Count the lines in the current buffer */
+		while ((p = memchr(p, '\n', tmp->buf + rc - p))) {
+			++p;
+			++tmp->n_lines;
+		}
+		total_lines += tmp->n_lines;
+
+		/* Try to append to the previous buffer if there's enough free
+		 * space
+		 */
+		if (tmp->n_bytes + last->n_bytes < BUFFER_SIZE) {
+			memcpy(&last->buf[last->n_bytes], tmp->buf, tmp->n_bytes);
+			last->n_bytes += tmp->n_bytes;
+			last->n_lines += tmp->n_lines;
+		} else {
+			last = last->next = tmp;
+			if (total_lines - first->n_lines > n_lines) {
+				tmp = first;
+				total_lines -= first->n_lines;
+				first = first->next;
+			} else
+				tmp = emalloc(sizeof(struct line_buf));
+		}
+	}
+
+	free(tmp);
+
+	/* XXX: Even necessary? */
+	if (rc < 0) {
+		fprintf(stderr, "Error: Could not read from %s\n", pretty_name(f->name));
+		rc = -1;
+		goto err_out;
+	}
+
+	if (last->n_bytes == 0)
+		goto err_out;
+
+	/* Count incomplete lines */
+	if (last->buf[last->n_bytes - 1] != '\n') {
+		++last->n_lines;
+		++total_lines;
+	}
+
+	/* Skip unneeded buffers */
+	for (tmp = first; total_lines - tmp->n_lines > n_lines; tmp = tmp->next)
+		total_lines -= tmp->n_lines;
+
+	{
+		char const *p = tmp->buf;
+		if (total_lines > n_lines) {
+			size_t j;
+			for (j = total_lines - n_lines; j; --j) {
+				p = memchr(p, '\n', tmp->buf + tmp->n_bytes - p);
+				assert(p);
+				++p;
+			}
+		}
+
+		write(STDOUT_FILENO, p, tmp->buf + tmp->n_bytes - p);
+	}
+
+	for (tmp = tmp->next; tmp; tmp = tmp->next)
+		if (write(STDOUT_FILENO, tmp->buf, tmp->n_bytes) <= 0) {
+			/* e.g. when writing to a pipe which gets closed */
+			fprintf(stderr, "Error: Could not write to stdout (%s)\n", strerror(errno));
+			rc = -1;
+			break;
+		}
+
+	rc = 0;
+
+err_out:
+	while (first) {
+		tmp = first->next;
+		free(first);
+		first = tmp;
+	}
+
+	return rc;
+}
+
+/* TODO: Implement me :) */
+static ssize_t tail_pipe_bytes(struct file_struct *f, unsigned long n_bytes)
 {
 	ssize_t rc;
 	char buf[BUFFER_SIZE];
@@ -232,11 +360,6 @@ static ssize_t tail_pipe_lines(struct file_struct *f, unsigned long n_lines)
 	}
 
 	return rc;
-}
-
-static ssize_t tail_pipe_bytes(struct file_struct *f, unsigned long n_bytes) {
-	/* TODO: Implement me :) */
-	return 0;
 }
 
 static int tail_file(struct file_struct *f, unsigned long n_units, char mode, char forever)
@@ -293,13 +416,13 @@ static int tail_file(struct file_struct *f, unsigned long n_units, char mode, ch
 		return -1;
 	}
 
-	if (verbose)
-		write_header(f->name);
-
 	if (lseek(f->fd, offset, SEEK_SET) == (off_t) -1) {
 		fprintf(stderr, "Error: Could not seek in file '%s' (%s)\n", f->name, strerror(errno));
 		return -1;
 	}
+
+	if (verbose)
+		write_header(f->name);
 
 	while ((bytes_read = read(f->fd, buf, BUFFER_SIZE)) > 0)
 		write(STDOUT_FILENO, buf, (size_t) bytes_read);
