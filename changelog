@@ -1,3 +1,12 @@
+inotail 0.4
+
+  * Implemented tailing of stdin
+  * Fixed handling of EINTR signal (^Z/fg) (patch by Anthony Martinez)
+  * Improved error handling (patch by Folkert van Heusden)
+  * Added uninstall target to Makefile (patch by Folkert van Heusden)
+
+  -- Tobias Klauser <tklauser@distanz.ch> 2007-06-04 14:44
+
 inotail 0.3
 
   * Follow files even if they were moved
