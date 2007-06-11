@@ -64,9 +64,9 @@ static const struct option long_opts[] = {
 	{ NULL, 0, NULL, 0 }
 };
 
-static char *emalloc(size_t size)
+static void *emalloc(size_t size)
 {
-	char *ret = malloc(size);
+	void *ret = malloc(size);
 
 	if (unlikely(!ret)) {
 		fprintf(stderr, "Error: Failed to allocate %d bytes of memory (%s)\n", size, strerror(errno));
