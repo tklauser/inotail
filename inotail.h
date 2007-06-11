@@ -7,8 +7,8 @@
 #ifndef _INOTAIL_H
 #define _INOTAIL_H
 
-/* Number of items to tail. */
-#define DEFAULT_N_LINES 10
+#define BUFFER_SIZE 4096
+#define DEFAULT_N_LINES 10	/* Number of items to tail. */
 
 /* tail modes */
 enum { M_LINES, M_BYTES };
@@ -20,6 +20,14 @@ struct file_struct {
 	off_t st_size;		/* File size */
 	unsigned ignore;	/* Whether to ignore the file in further processing */
 	int i_watch;		/* Inotify watch associated with file_struct */
+};
+
+/* struct for linked list of buffers/lines in tail_pipe_lines */
+struct line_buf {
+	char buf[BUFFER_SIZE];
+	size_t n_lines;
+	size_t n_bytes;
+	struct line_buf *next;
 };
 
 #define IS_PIPELIKE(mode) \

@@ -30,7 +30,6 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <getopt.h>
-#include <assert.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 
@@ -40,7 +39,6 @@
 #include "inotail.h"
 
 #define PROGRAM_NAME "inotail"
-#define BUFFER_SIZE 4096
 /* inotify event buffer length for one file */
 #define INOTIFY_BUFLEN (4 * sizeof(struct inotify_event))
 
@@ -233,12 +231,6 @@ static off_t bytes_to_offset(struct file_struct *f, unsigned long n_bytes)
 /* For now more or less a copy of pipe_lines() from coreutils tail */
 static ssize_t tail_pipe_lines(struct file_struct *f, unsigned long n_lines)
 {
-	struct line_buf {
-		char buf[BUFFER_SIZE];
-		size_t n_lines;
-		size_t n_bytes;
-		struct line_buf *next;
-	};
 	struct line_buf *first, *last, *tmp;
 	ssize_t rc;
 	unsigned long total_lines = 0;
@@ -314,7 +306,6 @@ static ssize_t tail_pipe_lines(struct file_struct *f, unsigned long n_lines)
 			size_t j;
 			for (j = total_lines - n_lines; j; --j) {
 				p = memchr(p, '\n', tmp->buf + tmp->n_bytes - p);
-				assert(p);
 				++p;
 			}
 		}
