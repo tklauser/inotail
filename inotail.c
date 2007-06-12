@@ -379,12 +379,12 @@ static int watch_files(struct file_struct *files, int n_files)
 		ssize_t len;
 		int ev_idx = 0;
 
-		/* Keep trying in the case of EINTR */
+		/* Keep trying in the case of EINTR or EAGAIN*/
 		for (;;) {
 			len = read(ifd, buf, (n_files * INOTIFY_BUFLEN));
 			if (unlikely(len < 0)) {
 				/* Some form of signal, likely ^Z/fg's STOP and CONT interrupted the inotify read, retry */
-				if (errno == EINTR)
+				if (errno == EINTR || errno == EAGAIN)
 					continue;
 				else {
 					fprintf(stderr, "Error: Could not read inotify events (%s)\n", strerror(errno));
