@@ -246,8 +246,12 @@ static ssize_t tail_pipe_lines(struct file_struct *f, unsigned long n_lines)
 	while (1) {
 		const char *p;
 
-		if ((rc = read(f->fd, tmp->buf, BUFFER_SIZE)) <= 0)
-			break;
+		if ((rc = read(f->fd, tmp->buf, BUFFER_SIZE)) <= 0) {
+			if (rc < 0 && (errno == EINTR || errno == EAGAIN))
+				continue;
+			else
+				break;
+		}
 		tmp->n_bytes = rc;
 		tmp->n_lines = 0;
 		tmp->next = NULL;
@@ -280,10 +284,8 @@ static ssize_t tail_pipe_lines(struct file_struct *f, unsigned long n_lines)
 
 	free(tmp);
 
-	/* XXX: Even necessary? */
 	if (rc < 0) {
 		fprintf(stderr, "Error: Could not read from %s\n", pretty_name(f->name));
-		rc = -1;
 		goto err_out;
 	}
 
