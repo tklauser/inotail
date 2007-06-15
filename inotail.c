@@ -231,6 +231,7 @@ static ssize_t tail_pipe_lines(struct file_struct *f, unsigned long n_lines)
 	struct line_buf *first, *last, *tmp;
 	ssize_t rc;
 	unsigned long total_lines = 0;
+	const char *p;
 
 	if (n_lines == 0)
 		return 0;
@@ -241,8 +242,6 @@ static ssize_t tail_pipe_lines(struct file_struct *f, unsigned long n_lines)
 	tmp = emalloc(sizeof(struct line_buf));
 
 	while (1) {
-		const char *p;
-
 		if ((rc = read(f->fd, tmp->buf, BUFFER_SIZE)) <= 0) {
 			if (rc < 0 && (errno == EINTR || errno == EAGAIN))
 				continue;
@@ -283,11 +282,11 @@ static ssize_t tail_pipe_lines(struct file_struct *f, unsigned long n_lines)
 
 	if (rc < 0) {
 		fprintf(stderr, "Error: Could not read from %s\n", pretty_name(f->name));
-		goto err_out;
+		goto out;
 	}
 
 	if (last->n_bytes == 0)
-		goto err_out;
+		goto out;
 
 	/* Count incomplete lines */
 	if (last->buf[last->n_bytes - 1] != '\n') {
@@ -299,18 +298,17 @@ static ssize_t tail_pipe_lines(struct file_struct *f, unsigned long n_lines)
 	for (tmp = first; total_lines - tmp->n_lines > n_lines; tmp = tmp->next)
 		total_lines -= tmp->n_lines;
 
-	{
-		char const *p = tmp->buf;
-		if (total_lines > n_lines) {
-			size_t j;
-			for (j = total_lines - n_lines; j; --j) {
-				p = memchr(p, '\n', tmp->buf + tmp->n_bytes - p);
-				++p;
-			}
-		}
+	p = tmp->buf;
 
-		write(STDOUT_FILENO, p, tmp->buf + tmp->n_bytes - p);
+	if (total_lines > n_lines) {
+		size_t j;
+		for (j = total_lines - n_lines; j; --j) {
+			p = memchr(p, '\n', tmp->buf + tmp->n_bytes - p);
+			++p;
+		}
 	}
+
+	write(STDOUT_FILENO, p, tmp->buf + tmp->n_bytes - p);
 
 	for (tmp = tmp->next; tmp; tmp = tmp->next)
 		if (write(STDOUT_FILENO, tmp->buf, tmp->n_bytes) <= 0) {
@@ -322,7 +320,7 @@ static ssize_t tail_pipe_lines(struct file_struct *f, unsigned long n_lines)
 
 	rc = 0;
 
-err_out:
+out:
 	while (first) {
 		tmp = first->next;
 		free(first);
