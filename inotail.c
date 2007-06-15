@@ -30,7 +30,6 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <getopt.h>
-#include <ctype.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 
@@ -94,11 +93,10 @@ static void usage(const int status)
 
 static inline void setup_file(struct file_struct *f)
 {
-	f->fd = -1;
+	f->fd = f->i_watch = -1;
 	f->st_size = 0;
 	f->st_blksize = DEFAULT_BUFFER_SIZE;
 	f->ignore = 0;
-	f->i_watch = -1;
 }
 
 static void ignore_file(struct file_struct *f)
@@ -145,7 +143,10 @@ static off_t lines_to_offset_from_end(struct file_struct *f, unsigned long n_lin
 		/* Start of current block */
 		offset -= block_size;
 
-		lseek(f->fd, offset, SEEK_SET);
+		if (lseek(f->fd, offset, SEEK_SET) == (off_t) -1) {
+			fprintf(stderr, "Error: Could not seek in file '%s' (%s)\n", f->name, strerror(errno));
+			return -1;
+		}
 
 		rc = read(f->fd, buf, block_size);
 		if (unlikely(rc < 0)) {
@@ -184,7 +185,10 @@ static off_t lines_to_offset_from_begin(struct file_struct *f, unsigned long n_l
 		int i;
 		ssize_t rc, block_size = f->st_blksize;
 
-		lseek(f->fd, offset, SEEK_SET);
+		if (lseek(f->fd, offset, SEEK_SET) == (off_t) -1) {
+			fprintf(stderr, "Error: Could not seek in file '%s' (%s)\n", f->name, strerror(errno));
+			return -1;
+		}
 
 		rc = read(f->fd, buf, block_size);
 		if (unlikely(rc < 0)) {
@@ -226,10 +230,8 @@ static off_t bytes_to_offset(struct file_struct *f, unsigned long n_bytes)
 	if (from_begin) {
 		if (n_bytes > 0)
 			offset = (off_t) n_bytes - 1;
-	} else {
-		if ((off_t) n_bytes < f->st_size)
-			offset = f->st_size - (off_t) n_bytes;
-	}
+	} else if ((off_t) n_bytes < f->st_size)
+		offset = f->st_size - (off_t) n_bytes;
 
 	return offset;
 }
@@ -244,7 +246,7 @@ static ssize_t tail_pipe(struct file_struct *f)
 
 	/* We will just tail everything here */
 	while ((rc = read(f->fd, buf, f->st_blksize)) > 0) {
-		if (write(STDOUT_FILENO, buf, (size_t) rc) < 0) {
+		if (write(STDOUT_FILENO, buf, (size_t) rc) <= 0) {
 			/* e.g. when writing to a pipe which gets closed */
 			fprintf(stderr, "Error: Could not write to stdout (%s)\n", strerror(errno));
 			rc = -1;
@@ -310,7 +312,10 @@ static int tail_file(struct file_struct *f, unsigned long n_units, char mode, ch
 	if (verbose)
 		write_header(f->name);
 
-	lseek(f->fd, offset, SEEK_SET);
+	if (lseek(f->fd, offset, SEEK_SET) == (off_t) -1) {
+		fprintf(stderr, "Error: Could not seek in file '%s' (%s)\n", f->name, strerror(errno));
+		return -1;
+	}
 
 	while ((bytes_read = read(f->fd, buf, f->st_blksize)) > 0)
 		write(STDOUT_FILENO, buf, (size_t) bytes_read);
@@ -341,7 +346,13 @@ static int handle_inotify_event(struct inotify_event *inev, struct file_struct *
 		if (verbose)
 			write_header(f->name);
 
-		lseek(f->fd, f->st_size, SEEK_SET);	/* Old file size */
+		/* Seek to old file size */
+		if (lseek(f->fd, f->st_size, SEEK_SET) == (off_t) -1) {
+			fprintf(stderr, "Error: Could not seek in file '%s' (%s)\n", f->name, strerror(errno));
+			ret = -1;
+			goto ignore;
+		}
+
 		while ((rc = read(f->fd, fbuf, f->st_blksize)) != 0)
 			write(STDOUT_FILENO, fbuf, (size_t) rc);
 
@@ -377,10 +388,10 @@ static int watch_files(struct file_struct *files, int n_files)
 
 	ifd = inotify_init();
 	if (errno == ENOSYS) {
-		fprintf(stderr, "Error: Inotify is not supported by the kernel you're currently running.\n");
+		fprintf(stderr, "Error: inotify is not supported by the kernel you're currently running.\n");
 		exit(EXIT_FAILURE);
 	} else if (unlikely(ifd < 0)) {
-		fprintf(stderr, "Error: Could not initialize Inotify (%s)\n", strerror(errno));
+		fprintf(stderr, "Error: Could not initialize inotify (%s)\n", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
 
@@ -403,8 +414,13 @@ static int watch_files(struct file_struct *files, int n_files)
 
 		len = read(ifd, buf, (n_files * INOTIFY_BUFLEN));
 		if (unlikely(len < 0)) {
-			fprintf(stderr, "Error: Could not read inotify events (%s)\n", strerror(errno));
-			exit(EXIT_FAILURE);
+			/* Some form of signal, likely ^Z/fg's STOP and CONT interrupted the inotify read, retry */
+			if (errno == EINTR || errno == EAGAIN)
+				continue;	/* Keep trying */
+			else {
+				fprintf(stderr, "Error: Could not read inotify events (%s)\n", strerror(errno));
+				exit(EXIT_FAILURE);
+			}
 		}
 
 		while (ev_idx < len) {
@@ -415,7 +431,9 @@ static int watch_files(struct file_struct *files, int n_files)
 
 			/* Which file has produced the event? */
 			for (i = 0; i < n_files; i++) {
-				if (!files[i].ignore && files[i].fd >= 0 && files[i].i_watch == inev->wd) {
+				if (!files[i].ignore
+						&& files[i].fd >= 0
+						&& files[i].i_watch == inev->wd) {
 					f = &files[i];
 					break;
 				}
@@ -432,7 +450,6 @@ static int watch_files(struct file_struct *files, int n_files)
 	}
 
 	close(ifd);
-
 	return -1;
 }
 
@@ -457,7 +474,7 @@ int main(int argc, char **argv)
 			} else if (*optarg == '-')
 				optarg++;
 
-			if (!isdigit(*optarg)) {
+			if (!is_digit(*optarg)) {
 				fprintf(stderr, "Invalid number of lines: %s\n", optarg);
 				exit(EXIT_FAILURE);
 			}

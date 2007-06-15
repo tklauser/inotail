@@ -32,6 +32,8 @@ struct file_struct {
 #define IS_TAILABLE(mode) \
 	(S_ISREG(mode) || IS_PIPELIKE(mode) || S_ISCHR(mode))
 
+#define is_digit(c) ((c) >= '0' && (c) <= '9')
+
 #ifdef DEBUG
 # define dprintf(fmt, args...) fprintf(stderr, fmt, ##args)
 #else
