@@ -355,10 +355,10 @@ static int watch_files(struct file_struct *files, int n_files)
 
 	ifd = inotify_init();
 	if (errno == ENOSYS) {
-		fprintf(stderr, "Error: Inotify is not supported by the kernel you're currently running.\n");
+		fprintf(stderr, "Error: inotify is not supported by the kernel you're currently running.\n");
 		exit(EXIT_FAILURE);
 	} else if (unlikely(ifd < 0)) {
-		fprintf(stderr, "Error: Could not initialize Inotify (%s)\n", strerror(errno));
+		fprintf(stderr, "Error: Could not initialize inotify (%s)\n", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
 
