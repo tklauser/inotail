@@ -92,10 +92,9 @@ static void usage(const int status)
 
 static inline void setup_file(struct file_struct *f)
 {
-	f->fd = -1;
+	f->fd = f->i_watch = -1;
 	f->st_size = 0;
 	f->ignore = 0;
-	f->i_watch = -1;
 }
 
 static void ignore_file(struct file_struct *f)
@@ -220,10 +219,8 @@ static off_t bytes_to_offset(struct file_struct *f, unsigned long n_bytes)
 	if (from_begin) {
 		if (n_bytes > 0)
 			offset = (off_t) n_bytes - 1;
-	} else {
-		if ((off_t) n_bytes < f->st_size)
-			offset = f->st_size - (off_t) n_bytes;
-	}
+	} else if ((off_t) n_bytes < f->st_size)
+		offset = f->st_size - (off_t) n_bytes;
 
 	return offset;
 }
@@ -504,21 +501,15 @@ static int watch_files(struct file_struct *files, int n_files)
 		ssize_t len;
 		int ev_idx = 0;
 
-		/* Keep trying in the case of EINTR (see below) */
-		for (;;) {
-			len = read(ifd, buf, (n_files * INOTIFY_BUFLEN));
-			if (unlikely(len < 0)) {
-				if (errno == EINTR) {
-					/* Some form of signal, likely ^Z/fg's STOP and CONT interrupted the inotify read, retry */
-					continue;
-				} else {
-					fprintf(stderr, "Error: Could not read inotify events (%s)\n", strerror(errno));
-					exit(EXIT_FAILURE);
-				}
+		len = read(ifd, buf, (n_files * INOTIFY_BUFLEN));
+		if (unlikely(len < 0)) {
+			/* Some form of signal, likely ^Z/fg's STOP and CONT interrupted the inotify read, retry */
+			if (errno == EINTR || errno == EAGAIN)
+				continue;	/* Keep trying */
+			else {
+				fprintf(stderr, "Error: Could not read inotify events (%s)\n", strerror(errno));
+				exit(EXIT_FAILURE);
 			}
-
-			/* The read did succeed */
-			break;
 		}
 
 		while (ev_idx < len) {
