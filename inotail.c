@@ -512,7 +512,7 @@ int main(int argc, char **argv)
 			struct stat finfo;
 			int rc = fstat(STDIN_FILENO, &finfo);
 
-			if (rc == -1) {
+			if (unlikely(rc == -1)) {
 				fprintf(stderr, "Error: Could not stat stdin (%s)\n", strerror(errno));
 				exit(EXIT_FAILURE);
 			}
