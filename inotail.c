@@ -414,9 +414,9 @@ static int watch_files(struct file_struct *files, int n_files)
 
 		len = read(ifd, buf, (n_files * INOTIFY_BUFLEN));
 		if (unlikely(len < 0)) {
-			/* Some form of signal, likely ^Z/fg's STOP and CONT interrupted the inotify read, retry */
+			/* Some signal, likely ^Z/fg's STOP and CONT interrupted the inotify read, retry */
 			if (errno == EINTR || errno == EAGAIN)
-				continue;	/* Keep trying */
+				continue;
 			else {
 				fprintf(stderr, "Error: Could not read inotify events (%s)\n", strerror(errno));
 				exit(EXIT_FAILURE);
