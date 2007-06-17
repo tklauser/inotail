@@ -522,11 +522,7 @@ int main(int argc, char **argv)
 		}
 	}
 
-	files = malloc(n_files * sizeof(struct file_struct));
-	if (unlikely(!files)) {
-		fprintf(stderr, "Error: Failed to allocate memory (%s)\n", strerror(errno));
-		exit(EXIT_FAILURE);
-	}
+	files = emalloc(n_files * sizeof(struct file_struct));
 
 	for (i = 0; i < n_files; i++) {
 		files[i].name = filenames[i];
