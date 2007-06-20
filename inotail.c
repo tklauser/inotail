@@ -295,7 +295,7 @@ static int tail_file(struct file_struct *f, unsigned long n_units, char mode, ch
 		return tail_pipe(f);
 
 	f->st_size = finfo.st_size;
-	f->st_blksize = finfo.st_blksize;	/* TODO: Can this value be 0 or negative? */
+	f->st_blksize = finfo.st_blksize;	/* TODO: Can this value be 0? */
 
 	if (mode == M_LINES)
 		offset = lines_to_offset(f, n_units);
