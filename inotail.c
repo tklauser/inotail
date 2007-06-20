@@ -145,6 +145,7 @@ static off_t lines_to_offset_from_end(struct file_struct *f, unsigned long n_lin
 
 		if (lseek(f->fd, offset, SEEK_SET) == (off_t) -1) {
 			fprintf(stderr, "Error: Could not seek in file '%s' (%s)\n", f->name, strerror(errno));
+			free(buf);
 			return -1;
 		}
 
@@ -187,6 +188,7 @@ static off_t lines_to_offset_from_begin(struct file_struct *f, unsigned long n_l
 
 		if (lseek(f->fd, offset, SEEK_SET) == (off_t) -1) {
 			fprintf(stderr, "Error: Could not seek in file '%s' (%s)\n", f->name, strerror(errno));
+			free(buf);
 			return -1;
 		}
 
@@ -314,6 +316,7 @@ static int tail_file(struct file_struct *f, unsigned long n_units, char mode, ch
 
 	if (lseek(f->fd, offset, SEEK_SET) == (off_t) -1) {
 		fprintf(stderr, "Error: Could not seek in file '%s' (%s)\n", f->name, strerror(errno));
+		free(buf);
 		return -1;
 	}
 
