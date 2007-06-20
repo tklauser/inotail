@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2006, Tobias Klauser <tklauser@distanz.ch>
+ * Copyright (C) 2005-2007, Tobias Klauser <tklauser@distanz.ch>
  *
  * Licensed under the terms of the GNU General Public License; version 2 or later.
  */
