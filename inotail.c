@@ -297,8 +297,6 @@ static int tail_file(struct file_struct *f, unsigned long n_units, char mode, ch
 	f->st_size = finfo.st_size;
 	f->st_blksize = finfo.st_blksize;	/* TODO: Can this value be 0 or negative? */
 
-	buf = emalloc(f->st_blksize);
-
 	if (mode == M_LINES)
 		offset = lines_to_offset(f, n_units);
 	else
@@ -307,7 +305,6 @@ static int tail_file(struct file_struct *f, unsigned long n_units, char mode, ch
 	/* We only get negative offsets on errors */
 	if (unlikely(offset < 0)) {
 		ignore_file(f);
-		free(buf);
 		return -1;
 	}
 
@@ -316,9 +313,10 @@ static int tail_file(struct file_struct *f, unsigned long n_units, char mode, ch
 
 	if (lseek(f->fd, offset, SEEK_SET) == (off_t) -1) {
 		fprintf(stderr, "Error: Could not seek in file '%s' (%s)\n", f->name, strerror(errno));
-		free(buf);
 		return -1;
 	}
+
+	buf = emalloc(f->st_blksize);
 
 	while ((bytes_read = read(f->fd, buf, f->st_blksize)) > 0)
 		write(STDOUT_FILENO, buf, (size_t) bytes_read);
