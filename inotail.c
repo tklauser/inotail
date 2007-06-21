@@ -335,14 +335,12 @@ static int tail_file(struct file_struct *f, unsigned long n_units, char mode, ch
 
 static int handle_inotify_event(struct inotify_event *inev, struct file_struct *f)
 {
-	char *fbuf;
 	int ret = 0;
 
 	if (inev->mask & IN_MODIFY) {
+		char *fbuf;
 		ssize_t rc;
 		struct stat finfo;
-
-		fbuf = emalloc(f->st_blksize);
 
 		if (verbose)
 			write_header(f->name);
@@ -354,12 +352,15 @@ static int handle_inotify_event(struct inotify_event *inev, struct file_struct *
 			goto ignore;
 		}
 
+		fbuf = emalloc(f->st_blksize);
+
 		while ((rc = read(f->fd, fbuf, f->st_blksize)) != 0)
 			write(STDOUT_FILENO, fbuf, (size_t) rc);
 
 		if (fstat(f->fd, &finfo) < 0) {
 			fprintf(stderr, "Error: Could not stat file '%s' (%s)\n", f->name, strerror(errno));
 			ret = -1;
+			free(fbuf);
 			goto ignore;
 		}
 
@@ -378,7 +379,6 @@ static int handle_inotify_event(struct inotify_event *inev, struct file_struct *
 
 ignore:
 	ignore_file(f);
-	free(fbuf);
 	return ret;
 }
 
