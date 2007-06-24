@@ -119,8 +119,10 @@ static void write_header(char *filename)
 	static unsigned short first_file = 1;
 	static char *last = NULL;
 
-	if (last != filename)
+	if (last != filename) {
 		fprintf(stdout, "%s==> %s <==\n", (first_file ? "" : "\n"), pretty_name(filename));
+		fflush(stdout);		/* Make sure the header is printed before the content */
+	}
 
 	first_file = 0;
 	last = filename;
