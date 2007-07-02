@@ -478,7 +478,7 @@ int main(int argc, char **argv)
 				optarg++;
 
 			if (!is_digit(*optarg)) {
-				fprintf(stderr, "Invalid number of lines: %s\n", optarg);
+				fprintf(stderr, "Error: Invalid number of units: %s\n", optarg);
 				exit(EXIT_FAILURE);
 			}
 			n_units = strtoul(optarg, NULL, 0);
