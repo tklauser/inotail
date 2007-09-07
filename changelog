@@ -1,11 +1,13 @@
 inotail 0.4
 
-  * Implemented tailing of stdin
-  * Fixed handling of EINTR signal (^Z/fg) (patch by Anthony Martinez)
-  * Improved error handling (patch by Folkert van Heusden)
-  * Added uninstall target to Makefile (patch by Folkert van Heusden)
+  * Use dynamic buffers of optimal size (st_blksize in struct stat) for
+    filesystem I/O (patch by Folkert van Heusden)
+  * Added handling of EINTR/EAGAIN while watching files for changes (patch by
+    Anthony Martinez)
+  * Better error checking and handling (patch by Folkert van Heusden)
+  * Various cleanups
 
-  -- Tobias Klauser <tklauser@distanz.ch> 2007-06-04 14:44
+  -- Tobias Klauser <tklauser@distanz.ch> 2007-06-20 15:00
 
 inotail 0.3
 

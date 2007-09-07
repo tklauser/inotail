@@ -93,7 +93,8 @@ static void usage(const int status)
 static inline void setup_file(struct file_struct *f)
 {
 	f->fd = f->i_watch = -1;
-	f->st_size = 0;
+	f->size = 0;
+	f->blksize = DEFAULT_BUFFER_SIZE;
 	f->ignore = 0;
 }
 
@@ -117,8 +118,10 @@ static void write_header(char *filename)
 	static unsigned short first_file = 1;
 	static char *last = NULL;
 
-	if (last != filename)
+	if (last != filename) {
 		fprintf(stdout, "%s==> %s <==\n", (first_file ? "" : "\n"), pretty_name(filename));
+		fflush(stdout);		/* Make sure the header is printed before the content */
+	}
 
 	first_file = 0;
 	last = filename;
@@ -126,16 +129,16 @@ static void write_header(char *filename)
 
 static off_t lines_to_offset_from_end(struct file_struct *f, unsigned long n_lines)
 {
-	char buf[BUFFER_SIZE];
-	off_t offset = f->st_size;
+	off_t offset = f->size;
+	char *buf = emalloc(f->blksize);
 
 	n_lines++;	/* We also count the last \n */
 
 	while (offset > 0 && n_lines > 0) {
 		int i;
-		ssize_t rc, block_size = BUFFER_SIZE;	/* Size of the current block we're reading */
+		ssize_t rc, block_size = f->blksize;	/* Size of the current block we're reading */
 
-		if (offset < BUFFER_SIZE)
+		if (offset < block_size)
 			block_size = offset;
 
 		/* Start of current block */
@@ -143,29 +146,34 @@ static off_t lines_to_offset_from_end(struct file_struct *f, unsigned long n_lin
 
 		if (lseek(f->fd, offset, SEEK_SET) == (off_t) -1) {
 			fprintf(stderr, "Error: Could not seek in file '%s' (%s)\n", f->name, strerror(errno));
+			free(buf);
 			return -1;
 		}
 
 		rc = read(f->fd, buf, block_size);
 		if (unlikely(rc < 0)) {
 			fprintf(stderr, "Error: Could not read from file '%s' (%s)\n", f->name, strerror(errno));
+			free(buf);
 			return -1;
 		}
 
 		for (i = block_size - 1; i > 0; i--) {
 			if (buf[i] == '\n') {
-				if (--n_lines == 0)
+				if (--n_lines == 0) {
+					free(buf);
 					return offset += i + 1; /* We don't want the first \n */
+				}
 			}
 		}
 	}
 
+	free(buf);
 	return offset;
 }
 
 static off_t lines_to_offset_from_begin(struct file_struct *f, unsigned long n_lines)
 {
-	char buf[BUFFER_SIZE];
+	char *buf;
 	off_t offset = 0;
 
 	/* tail everything for 'inotail -n +0' */
@@ -173,33 +181,39 @@ static off_t lines_to_offset_from_begin(struct file_struct *f, unsigned long n_l
 		return 0;
 
 	n_lines--;
+	buf = emalloc(f->blksize);
 
-	while (offset <= f->st_size && n_lines > 0) {
+	while (offset <= f->size && n_lines > 0) {
 		int i;
-		ssize_t rc, block_size = BUFFER_SIZE;
+		ssize_t rc, block_size = f->blksize;
 
 		if (lseek(f->fd, offset, SEEK_SET) == (off_t) -1) {
 			fprintf(stderr, "Error: Could not seek in file '%s' (%s)\n", f->name, strerror(errno));
+			free(buf);
 			return -1;
 		}
 
 		rc = read(f->fd, buf, block_size);
 		if (unlikely(rc < 0)) {
 			fprintf(stderr, "Error: Could not read from file '%s' (%s)\n", f->name, strerror(errno));
+			free(buf);
 			return -1;
 		} else if (rc < block_size)
 			block_size = rc;
 
 		for (i = 0; i < block_size; i++) {
 			if (buf[i] == '\n') {
-				if (--n_lines == 0)
+				if (--n_lines == 0) {
+					free(buf);
 					return offset + i + 1;
+				}
 			}
 		}
 
 		offset += block_size;
 	}
 
+	free(buf);
 	return offset;
 }
 
@@ -219,8 +233,8 @@ static off_t bytes_to_offset(struct file_struct *f, unsigned long n_bytes)
 	if (from_begin) {
 		if (n_bytes > 0)
 			offset = (off_t) n_bytes - 1;
-	} else if ((off_t) n_bytes < f->st_size)
-		offset = f->st_size - (off_t) n_bytes;
+	} else if ((off_t) n_bytes < f->size)
+		offset = f->size - (off_t) n_bytes;
 
 	return offset;
 }
@@ -336,14 +350,17 @@ static ssize_t tail_pipe_bytes(struct file_struct *f, unsigned long n_bytes)
 	ssize_t rc;
 	char buf[BUFFER_SIZE];
 
-	while ((rc = read(f->fd, buf, BUFFER_SIZE)) > 0) {
+	/* We will just tail everything here */
+	while ((rc = read(f->fd, buf, f->blksize)) > 0) {
 		if (write(STDOUT_FILENO, buf, (size_t) rc) <= 0) {
 			/* e.g. when writing to a pipe which gets closed */
 			fprintf(stderr, "Error: Could not write to stdout (%s)\n", strerror(errno));
-			return -1;
+			rc = -1;
+			break;
 		}
 	}
 
+	free(buf);
 	return rc;
 }
 
@@ -351,7 +368,7 @@ static int tail_file(struct file_struct *f, unsigned long n_units, char mode, ch
 {
 	ssize_t bytes_read = 0;
 	off_t offset = 0;
-	char buf[BUFFER_SIZE];
+	char *buf;
 	struct stat finfo;
 
 	if (strcmp(f->name, "-") == 0)
@@ -372,7 +389,7 @@ static int tail_file(struct file_struct *f, unsigned long n_units, char mode, ch
 	}
 
 	if (!IS_TAILABLE(finfo.st_mode)) {
-		fprintf(stderr, "Error: '%s' of unsupported file type\n", f->name);
+		fprintf(stderr, "Error: '%s' of unsupported file type (%s)\n", f->name, strerror(errno));
 		ignore_file(f);
 		return -1;
 	}
@@ -388,7 +405,8 @@ static int tail_file(struct file_struct *f, unsigned long n_units, char mode, ch
 			return tail_pipe_bytes(f, n_units);
 	}
 
-	f->st_size = finfo.st_size;
+	f->size = finfo.st_size;
+	f->blksize = finfo.st_blksize;	/* TODO: Can this value be 0? */
 
 	if (mode == M_LINES)
 		offset = lines_to_offset(f, n_units);
@@ -409,16 +427,20 @@ static int tail_file(struct file_struct *f, unsigned long n_units, char mode, ch
 	if (verbose)
 		write_header(f->name);
 
-	while ((bytes_read = read(f->fd, buf, BUFFER_SIZE)) > 0)
+	buf = emalloc(f->blksize);
+
+	while ((bytes_read = read(f->fd, buf, f->blksize)) > 0)
 		write(STDOUT_FILENO, buf, (size_t) bytes_read);
 
 	if (!forever) {
 		if (close(f->fd) < 0) {
 			fprintf(stderr, "Error: Could not close file '%s' (%s)\n", f->name, strerror(errno));
+			free(buf);
 			return -1;
 		}
 	} /* Let the fd open otherwise, we'll need it */
 
+	free(buf);
 	return 0;
 }
 
@@ -427,31 +449,35 @@ static int handle_inotify_event(struct inotify_event *inev, struct file_struct *
 	int ret = 0;
 
 	if (inev->mask & IN_MODIFY) {
+		char *fbuf;
 		ssize_t rc;
-		char fbuf[BUFFER_SIZE];
 		struct stat finfo;
 
 		if (verbose)
 			write_header(f->name);
 
 		/* Seek to old file size */
-		if (lseek(f->fd, f->st_size, SEEK_SET) == (off_t) -1) {
+		if (lseek(f->fd, f->size, SEEK_SET) == (off_t) -1) {
 			fprintf(stderr, "Error: Could not seek in file '%s' (%s)\n", f->name, strerror(errno));
 			ret = -1;
 			goto ignore;
 		}
 
-		while ((rc = read(f->fd, fbuf, BUFFER_SIZE)) != 0)
+		fbuf = emalloc(f->blksize);
+
+		while ((rc = read(f->fd, fbuf, f->blksize)) != 0)
 			write(STDOUT_FILENO, fbuf, (size_t) rc);
 
 		if (fstat(f->fd, &finfo) < 0) {
 			fprintf(stderr, "Error: Could not stat file '%s' (%s)\n", f->name, strerror(errno));
 			ret = -1;
+			free(fbuf);
 			goto ignore;
 		}
 
-		f->st_size = finfo.st_size;
+		f->size = finfo.st_size;
 
+		free(fbuf);
 		return ret;
 	} else if (inev->mask & IN_DELETE_SELF) {
 		fprintf(stderr, "File '%s' deleted.\n", f->name);
@@ -464,7 +490,6 @@ static int handle_inotify_event(struct inotify_event *inev, struct file_struct *
 
 ignore:
 	ignore_file(f);
-
 	return ret;
 }
 
@@ -475,10 +500,10 @@ static int watch_files(struct file_struct *files, int n_files)
 
 	ifd = inotify_init();
 	if (errno == ENOSYS) {
-		fprintf(stderr, "Error: Inotify is not supported by the kernel you're currently running.\n");
+		fprintf(stderr, "Error: inotify is not supported by the kernel you're currently running.\n");
 		exit(EXIT_FAILURE);
 	} else if (unlikely(ifd < 0)) {
-		fprintf(stderr, "Error: Could not initialize Inotify (%s)\n", strerror(errno));
+		fprintf(stderr, "Error: Could not initialize inotify (%s)\n", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
 
@@ -501,9 +526,9 @@ static int watch_files(struct file_struct *files, int n_files)
 
 		len = read(ifd, buf, (n_files * INOTIFY_BUFLEN));
 		if (unlikely(len < 0)) {
-			/* Some form of signal, likely ^Z/fg's STOP and CONT interrupted the inotify read, retry */
+			/* Some signal, likely ^Z/fg's STOP and CONT interrupted the inotify read, retry */
 			if (errno == EINTR || errno == EAGAIN)
-				continue;	/* Keep trying */
+				continue;
 			else {
 				fprintf(stderr, "Error: Could not read inotify events (%s)\n", strerror(errno));
 				exit(EXIT_FAILURE);
@@ -562,7 +587,7 @@ int main(int argc, char **argv)
 				optarg++;
 
 			if (!is_digit(*optarg)) {
-				fprintf(stderr, "Invalid number of lines: %s\n", optarg);
+				fprintf(stderr, "Error: Invalid number of units: %s\n", optarg);
 				exit(EXIT_FAILURE);
 			}
 			n_units = strtoul(optarg, NULL, 0);
@@ -597,17 +622,19 @@ int main(int argc, char **argv)
 		   specified and standard input is a pipe. */
 		if (forever) {
 			struct stat finfo;
-			if (fstat(STDIN_FILENO, &finfo) == 0
-					&& IS_PIPELIKE(finfo.st_mode))
+			int rc = fstat(STDIN_FILENO, &finfo);
+
+			if (unlikely(rc == -1)) {
+				fprintf(stderr, "Error: Could not stat stdin (%s)\n", strerror(errno));
+				exit(EXIT_FAILURE);
+			}
+
+			if (rc == 0 && IS_PIPELIKE(finfo.st_mode))
 				forever = 0;
 		}
 	}
 
-	files = malloc(n_files * sizeof(struct file_struct));
-	if (unlikely(!files)) {
-		fprintf(stderr, "Error: Failed to allocate memory (%s)\n", strerror(errno));
-		exit(EXIT_FAILURE);
-	}
+	files = emalloc(n_files * sizeof(struct file_struct));
 
 	for (i = 0; i < n_files; i++) {
 		files[i].name = filenames[i];

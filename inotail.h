@@ -1,11 +1,13 @@
 /*
- * Copyright (C) 2005-2006, Tobias Klauser <tklauser@distanz.ch>
+ * Copyright (C) 2005-2007, Tobias Klauser <tklauser@distanz.ch>
  *
  * Licensed under the terms of the GNU General Public License; version 2 or later.
  */
 
 #ifndef _INOTAIL_H
 #define _INOTAIL_H
+
+#include <sys/types.h>
 
 #define BUFFER_SIZE 4096
 #define DEFAULT_N_LINES 10	/* Number of items to tail. */
@@ -17,7 +19,8 @@ enum { M_LINES, M_BYTES };
 struct file_struct {
 	char *name;		/* Name of file (or '-' for stdin) */
 	int fd;			/* File descriptor (or -1 if file is not open */
-	off_t st_size;		/* File size */
+	off_t size;		/* File size */
+	blksize_t blksize;	/* Blocksize for filesystem I/O */
 	unsigned ignore;	/* Whether to ignore the file in further processing */
 	int i_watch;		/* Inotify watch associated with file_struct */
 };
