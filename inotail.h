@@ -19,8 +19,8 @@ enum { M_LINES, M_BYTES };
 struct file_struct {
 	char *name;		/* Name of file (or '-' for stdin) */
 	int fd;			/* File descriptor (or -1 if file is not open */
-	off_t st_size;		/* File size */
-	blksize_t st_blksize;	/* Blocksize for filesystem I/O */
+	off_t size;		/* File size */
+	blksize_t blksize;	/* Blocksize for filesystem I/O */
 	unsigned ignore;	/* Whether to ignore the file in further processing */
 	int i_watch;		/* Inotify watch associated with file_struct */
 };

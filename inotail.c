@@ -94,8 +94,8 @@ static void usage(const int status)
 static inline void setup_file(struct file_struct *f)
 {
 	f->fd = f->i_watch = -1;
-	f->st_size = 0;
-	f->st_blksize = DEFAULT_BUFFER_SIZE;
+	f->size = 0;
+	f->blksize = DEFAULT_BUFFER_SIZE;
 	f->ignore = 0;
 }
 
@@ -130,14 +130,14 @@ static void write_header(char *filename)
 
 static off_t lines_to_offset_from_end(struct file_struct *f, unsigned long n_lines)
 {
-	off_t offset = f->st_size;
-	char *buf = emalloc(f->st_blksize);
+	off_t offset = f->size;
+	char *buf = emalloc(f->blksize);
 
 	n_lines++;	/* We also count the last \n */
 
 	while (offset > 0 && n_lines > 0) {
 		int i;
-		ssize_t rc, block_size = f->st_blksize;	/* Size of the current block we're reading */
+		ssize_t rc, block_size = f->blksize;	/* Size of the current block we're reading */
 
 		if (offset < block_size)
 			block_size = offset;
@@ -182,11 +182,11 @@ static off_t lines_to_offset_from_begin(struct file_struct *f, unsigned long n_l
 		return 0;
 
 	n_lines--;
-	buf = emalloc(f->st_blksize);
+	buf = emalloc(f->blksize);
 
-	while (offset <= f->st_size && n_lines > 0) {
+	while (offset <= f->size && n_lines > 0) {
 		int i;
-		ssize_t rc, block_size = f->st_blksize;
+		ssize_t rc, block_size = f->blksize;
 
 		if (lseek(f->fd, offset, SEEK_SET) == (off_t) -1) {
 			fprintf(stderr, "Error: Could not seek in file '%s' (%s)\n", f->name, strerror(errno));
@@ -234,8 +234,8 @@ static off_t bytes_to_offset(struct file_struct *f, unsigned long n_bytes)
 	if (from_begin) {
 		if (n_bytes > 0)
 			offset = (off_t) n_bytes - 1;
-	} else if ((off_t) n_bytes < f->st_size)
-		offset = f->st_size - (off_t) n_bytes;
+	} else if ((off_t) n_bytes < f->size)
+		offset = f->size - (off_t) n_bytes;
 
 	return offset;
 }
@@ -243,13 +243,13 @@ static off_t bytes_to_offset(struct file_struct *f, unsigned long n_bytes)
 static ssize_t tail_pipe(struct file_struct *f)
 {
 	ssize_t rc;
-	char *buf = emalloc(f->st_blksize);
+	char *buf = emalloc(f->blksize);
 
 	if (verbose)
 		write_header(f->name);
 
 	/* We will just tail everything here */
-	while ((rc = read(f->fd, buf, f->st_blksize)) > 0) {
+	while ((rc = read(f->fd, buf, f->blksize)) > 0) {
 		if (write(STDOUT_FILENO, buf, (size_t) rc) <= 0) {
 			/* e.g. when writing to a pipe which gets closed */
 			fprintf(stderr, "Error: Could not write to stdout (%s)\n", strerror(errno));
@@ -296,8 +296,8 @@ static int tail_file(struct file_struct *f, unsigned long n_units, char mode, ch
 	if (IS_PIPELIKE(finfo.st_mode) || f->fd == STDIN_FILENO)
 		return tail_pipe(f);
 
-	f->st_size = finfo.st_size;
-	f->st_blksize = finfo.st_blksize;	/* TODO: Can this value be 0? */
+	f->size = finfo.st_size;
+	f->blksize = finfo.st_blksize;	/* TODO: Can this value be 0? */
 
 	if (mode == M_LINES)
 		offset = lines_to_offset(f, n_units);
@@ -318,9 +318,9 @@ static int tail_file(struct file_struct *f, unsigned long n_units, char mode, ch
 		return -1;
 	}
 
-	buf = emalloc(f->st_blksize);
+	buf = emalloc(f->blksize);
 
-	while ((bytes_read = read(f->fd, buf, f->st_blksize)) > 0)
+	while ((bytes_read = read(f->fd, buf, f->blksize)) > 0)
 		write(STDOUT_FILENO, buf, (size_t) bytes_read);
 
 	if (!forever) {
@@ -348,15 +348,15 @@ static int handle_inotify_event(struct inotify_event *inev, struct file_struct *
 			write_header(f->name);
 
 		/* Seek to old file size */
-		if (lseek(f->fd, f->st_size, SEEK_SET) == (off_t) -1) {
+		if (lseek(f->fd, f->size, SEEK_SET) == (off_t) -1) {
 			fprintf(stderr, "Error: Could not seek in file '%s' (%s)\n", f->name, strerror(errno));
 			ret = -1;
 			goto ignore;
 		}
 
-		fbuf = emalloc(f->st_blksize);
+		fbuf = emalloc(f->blksize);
 
-		while ((rc = read(f->fd, fbuf, f->st_blksize)) != 0)
+		while ((rc = read(f->fd, fbuf, f->blksize)) != 0)
 			write(STDOUT_FILENO, fbuf, (size_t) rc);
 
 		if (fstat(f->fd, &finfo) < 0) {
@@ -366,7 +366,7 @@ static int handle_inotify_event(struct inotify_event *inev, struct file_struct *
 			goto ignore;
 		}
 
-		f->st_size = finfo.st_size;
+		f->size = finfo.st_size;
 
 		free(fbuf);
 		return ret;
