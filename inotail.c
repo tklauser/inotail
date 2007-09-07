@@ -287,7 +287,7 @@ static int tail_file(struct file_struct *f, unsigned long n_units, char mode, ch
 	}
 
 	if (!IS_TAILABLE(finfo.st_mode)) {
-		fprintf(stderr, "Error: '%s' of unsupported file type\n", f->name);
+		fprintf(stderr, "Error: '%s' of unsupported file type (%s)\n", f->name, strerror(errno));
 		ignore_file(f);
 		return -1;
 	}
