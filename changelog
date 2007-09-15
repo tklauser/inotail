@@ -1,3 +1,10 @@
+inotail 0.5
+
+  * Output verbose file headers correctly when used in a pipe
+  * Small code cleanups
+
+  -- Tobias Klauser <tklauser@distanz.ch> 2007-09-07 13:30
+
 inotail 0.4
 
   * Use dynamic buffers of optimal size (st_blksize in struct stat) for

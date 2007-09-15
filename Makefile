@@ -4,7 +4,7 @@
 #
 # Licensed under the terms of the GNU General Public License; version 2 or later.
 
-VERSION	= 0.4
+VERSION	= 0.5
 
 # Paths
 prefix	= /usr/local
