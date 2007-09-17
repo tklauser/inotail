@@ -94,7 +94,7 @@ static inline void setup_file(struct file_struct *f)
 {
 	f->fd = f->i_watch = -1;
 	f->size = 0;
-	f->blksize = DEFAULT_BUFFER_SIZE;
+	f->blksize = BUFFER_SIZE;
 	f->ignore = 0;
 }
 
