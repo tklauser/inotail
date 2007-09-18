@@ -239,13 +239,62 @@ static off_t bytes_to_offset(struct file_struct *f, unsigned long n_bytes)
 	return offset;
 }
 
-/* For now more or less a copy of pipe_lines() from coreutils tail */
-static ssize_t tail_pipe_lines(struct file_struct *f, unsigned long n_lines)
+static int tail_pipe_from_begin(struct file_struct *f, unsigned long n_units, const char mode)
+{
+	int bytes_read = 0;
+	char buf[BUFSIZ];
+
+	n_units--;
+
+	while (n_units > 0) {
+		if ((bytes_read = read(f->fd, buf, BUFSIZ)) <= 0) {
+			if (bytes_read < 0 && (errno == EINTR || errno == EAGAIN))
+				continue;
+			else
+				return bytes_read;
+		}
+
+		if (mode == M_LINES) {
+			int i;
+			ssize_t block_size = BUFSIZ;
+
+			if (bytes_read < BUFSIZ)
+				block_size = bytes_read;
+
+			for (i = 0; i < block_size; i++) {
+				if (buf[i] == '\n') {
+					if (--n_units == 0)
+						break;
+				}
+			}
+
+			if (++i < block_size)
+				write(STDOUT_FILENO, &buf[i], bytes_read - i);
+		} else {
+			if ((unsigned long) bytes_read > n_units) {
+				write(STDOUT_FILENO, &buf[n_units], bytes_read - n_units);
+				bytes_read = n_units;
+			}
+
+			n_units -= bytes_read;
+		}
+	}
+
+	while ((bytes_read = read(f->fd, buf, BUFSIZ)) > 0)
+		write(STDOUT_FILENO, buf, (size_t) bytes_read);
+
+	return 0;
+}
+
+static int tail_pipe_lines(struct file_struct *f, unsigned long n_lines)
 {
 	struct line_buf *first, *last, *tmp;
-	ssize_t rc;
+	int rc;
 	unsigned long total_lines = 0;
 	const char *p;
+
+	if (from_begin)
+		return tail_pipe_from_begin(f, n_lines, M_LINES);
 
 	first = last = emalloc(sizeof(struct line_buf));
 	first->n_bytes = first->n_lines = 0;
@@ -342,12 +391,15 @@ out:
 	return rc;
 }
 
-static ssize_t tail_pipe_bytes(struct file_struct *f, unsigned long n_bytes)
+static int tail_pipe_bytes(struct file_struct *f, unsigned long n_bytes)
 {
 	struct char_buf *first, *last, *tmp;
-	ssize_t rc;
+	int rc;
 	unsigned long total_bytes = 0;
 	unsigned long i = 0;		/* Index into buffer */
+
+	if (from_begin)
+		return tail_pipe_from_begin(f, n_bytes, M_BYTES);
 
 	first = last = emalloc(sizeof(struct char_buf));
 	first->n_bytes = 0;
