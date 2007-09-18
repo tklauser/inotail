@@ -250,10 +250,9 @@ static ssize_t tail_pipe(struct file_struct *f)
 
 	/* We will just tail everything here */
 	while ((rc = read(f->fd, buf, f->blksize)) > 0) {
-		if (write(STDOUT_FILENO, buf, (size_t) rc) <= 0) {
+		if ((rc = write(STDOUT_FILENO, buf, (size_t) rc)) <= 0) {
 			/* e.g. when writing to a pipe which gets closed */
 			fprintf(stderr, "Error: Could not write to stdout (%s)\n", strerror(errno));
-			rc = -1;
 			break;
 		}
 	}
@@ -348,9 +347,8 @@ static int handle_inotify_event(struct inotify_event *inev, struct file_struct *
 			write_header(f->name);
 
 		/* Seek to old file size */
-		if (lseek(f->fd, f->size, SEEK_SET) == (off_t) -1) {
+		if ((ret = lseek(f->fd, f->size, SEEK_SET)) == (off_t) -1) {
 			fprintf(stderr, "Error: Could not seek in file '%s' (%s)\n", f->name, strerror(errno));
-			ret = -1;
 			goto ignore;
 		}
 
@@ -359,9 +357,8 @@ static int handle_inotify_event(struct inotify_event *inev, struct file_struct *
 		while ((rc = read(f->fd, fbuf, f->blksize)) != 0)
 			write(STDOUT_FILENO, fbuf, (size_t) rc);
 
-		if (fstat(f->fd, &finfo) < 0) {
+		if ((ret = fstat(f->fd, &finfo)) < 0) {
 			fprintf(stderr, "Error: Could not stat file '%s' (%s)\n", f->name, strerror(errno));
-			ret = -1;
 			free(fbuf);
 			goto ignore;
 		}
