@@ -247,9 +247,6 @@ static ssize_t tail_pipe_lines(struct file_struct *f, unsigned long n_lines)
 	unsigned long total_lines = 0;
 	const char *p;
 
-	if (n_lines == 0)
-		return 0;
-
 	first = last = emalloc(sizeof(struct line_buf));
 	first->n_bytes = first->n_lines = 0;
 	first->next = NULL;
@@ -351,9 +348,6 @@ static ssize_t tail_pipe_bytes(struct file_struct *f, unsigned long n_bytes)
 	ssize_t rc;
 	unsigned long total_bytes = 0;
 	unsigned long i = 0;		/* Index into buffer */
-
-	if (n_bytes == 0)
-		return 0;
 
 	first = last = emalloc(sizeof(struct char_buf));
 	first->n_bytes = 0;
@@ -460,6 +454,9 @@ static int tail_file(struct file_struct *f, unsigned long n_units, char mode, ch
 	if (IS_PIPELIKE(finfo.st_mode) || f->fd == STDIN_FILENO) {
 		if (verbose)
 			write_header(f->name);
+
+		if (n_units == 0)
+			return 0;
 
 		if (mode == M_LINES)
 			return tail_pipe_lines(f, n_units);
