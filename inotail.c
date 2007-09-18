@@ -345,23 +345,84 @@ out:
 	return rc;
 }
 
-/* TODO: Implement me :) */
 static ssize_t tail_pipe_bytes(struct file_struct *f, unsigned long n_bytes)
 {
+	struct char_buf *first, *last, *tmp;
 	ssize_t rc;
-	char buf[BUFSIZ];
+	unsigned long total_bytes = 0;
+	unsigned long i = 0;		/* Index into buffer */
 
-	/* We will just tail everything here */
-	while ((rc = read(f->fd, buf, f->blksize)) > 0) {
-		if (write(STDOUT_FILENO, buf, (size_t) rc) <= 0) {
-			/* e.g. when writing to a pipe which gets closed */
-			fprintf(stderr, "Error: Could not write to stdout (%s)\n", strerror(errno));
-			rc = -1;
-			break;
+	if (n_bytes == 0)
+		return 0;
+
+	first = last = emalloc(sizeof(struct char_buf));
+	first->n_bytes = 0;
+	first->next = NULL;
+	tmp = emalloc(sizeof(struct char_buf));
+
+	while(1) {
+		if ((rc = read(f->fd, tmp->buf, BUFSIZ)) <= 0) {
+			if (rc < 0 && (errno == EINTR || errno == EAGAIN))
+				continue;
+			else
+				break;
+		}
+		total_bytes += rc;
+		tmp->n_bytes = rc;
+		tmp->next = NULL;
+
+		/* Try to append to the previous buffer if there's enough free
+		 * space
+		 */
+		if (tmp->n_bytes + last->n_bytes < BUFSIZ) {
+			memcpy(&last->buf[last->n_bytes], tmp->buf, tmp->n_bytes);
+			last->n_bytes += tmp->n_bytes;
+		} else {
+			last = last->next = tmp;
+			if (total_bytes - first->n_bytes > n_bytes) {
+				tmp = first;
+				total_bytes -= first->n_bytes;
+				first = first->next;
+			} else
+				tmp = emalloc(sizeof(struct char_buf));
 		}
 	}
 
-	free(buf);
+	free(tmp);
+
+	if (rc < 0) {
+		fprintf(stderr, "Error: Could not read from %s\n", pretty_name(f->name));
+		goto out;
+	}
+
+	/* Skip unneeded buffers */
+	for (tmp = first; total_bytes - tmp->n_bytes > n_bytes; tmp = tmp->next)
+		total_bytes -= tmp->n_bytes;
+
+	if (total_bytes > n_bytes)
+		i = total_bytes - n_bytes;
+
+	if ((rc = write(STDOUT_FILENO, &tmp->buf[i], tmp->n_bytes - i)) <= 0) {
+		/* e.g. when writing to a pipe which gets closed */
+		fprintf(stderr, "Error: Could not write to stdout (%s)\n", strerror(errno));
+		goto out;
+	}
+
+	for (tmp = tmp->next; tmp; tmp = tmp->next)
+		if ((rc = write(STDOUT_FILENO, tmp->buf, tmp->n_bytes)) <= 0) {
+			fprintf(stderr, "Error: Could not write to stdout (%s)\n", strerror(errno));
+			goto out;
+		}
+
+
+	rc = 0;
+out:
+	while (first) {
+		tmp = first->next;
+		free(first);
+		first = tmp;
+	}
+
 	return rc;
 }
 

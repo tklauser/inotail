@@ -32,6 +32,13 @@ struct line_buf {
 	struct line_buf *next;
 };
 
+/* struct for linked list of byte buffers in tail_pipe_bytes */
+struct char_buf {
+	char buf[BUFSIZ];
+	size_t n_bytes;
+	struct char_buf *next;
+};
+
 #define IS_PIPELIKE(mode) \
 	(S_ISFIFO(mode) || S_ISSOCK(mode))
 
