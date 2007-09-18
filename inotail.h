@@ -9,7 +9,6 @@
 
 #include <sys/types.h>
 
-#define BUFFER_SIZE 4096
 #define DEFAULT_N_LINES 10	/* Number of items to tail. */
 
 /* tail modes */
@@ -27,7 +26,7 @@ struct file_struct {
 
 /* struct for linked list of buffers/lines in tail_pipe_lines */
 struct line_buf {
-	char buf[BUFFER_SIZE];
+	char buf[BUFSIZ];
 	size_t n_lines;
 	size_t n_bytes;
 	struct line_buf *next;

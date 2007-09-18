@@ -94,7 +94,7 @@ static inline void setup_file(struct file_struct *f)
 {
 	f->fd = f->i_watch = -1;
 	f->size = 0;
-	f->blksize = BUFFER_SIZE;
+	f->blksize = BUFSIZ;
 	f->ignore = 0;
 }
 
@@ -256,7 +256,7 @@ static ssize_t tail_pipe_lines(struct file_struct *f, unsigned long n_lines)
 	tmp = emalloc(sizeof(struct line_buf));
 
 	while (1) {
-		if ((rc = read(f->fd, tmp->buf, BUFFER_SIZE)) <= 0) {
+		if ((rc = read(f->fd, tmp->buf, BUFSIZ)) <= 0) {
 			if (rc < 0 && (errno == EINTR || errno == EAGAIN))
 				continue;
 			else
@@ -269,15 +269,15 @@ static ssize_t tail_pipe_lines(struct file_struct *f, unsigned long n_lines)
 
 		/* Count the lines in the current buffer */
 		while ((p = memchr(p, '\n', tmp->buf + rc - p))) {
-			++p;
-			++tmp->n_lines;
+			p++;
+			tmp->n_lines++;
 		}
 		total_lines += tmp->n_lines;
 
 		/* Try to append to the previous buffer if there's enough free
 		 * space
 		 */
-		if (tmp->n_bytes + last->n_bytes < BUFFER_SIZE) {
+		if (tmp->n_bytes + last->n_bytes < BUFSIZ) {
 			memcpy(&last->buf[last->n_bytes], tmp->buf, tmp->n_bytes);
 			last->n_bytes += tmp->n_bytes;
 			last->n_lines += tmp->n_lines;
@@ -304,8 +304,8 @@ static ssize_t tail_pipe_lines(struct file_struct *f, unsigned long n_lines)
 
 	/* Count incomplete lines */
 	if (last->buf[last->n_bytes - 1] != '\n') {
-		++last->n_lines;
-		++total_lines;
+		last->n_lines++;
+		total_lines++;
 	}
 
 	/* Skip unneeded buffers */
@@ -315,10 +315,10 @@ static ssize_t tail_pipe_lines(struct file_struct *f, unsigned long n_lines)
 	p = tmp->buf;
 
 	if (total_lines > n_lines) {
-		size_t j;
+		unsigned long j;
 		for (j = total_lines - n_lines; j; --j) {
 			p = memchr(p, '\n', tmp->buf + tmp->n_bytes - p);
-			++p;
+			p++;
 		}
 	}
 
@@ -330,13 +330,11 @@ static ssize_t tail_pipe_lines(struct file_struct *f, unsigned long n_lines)
 
 	for (tmp = tmp->next; tmp; tmp = tmp->next)
 		if ((rc = write(STDOUT_FILENO, tmp->buf, tmp->n_bytes)) <= 0) {
-			/* e.g. when writing to a pipe which gets closed */
 			fprintf(stderr, "Error: Could not write to stdout (%s)\n", strerror(errno));
 			goto out;
 		}
 
 	rc = 0;
-
 out:
 	while (first) {
 		tmp = first->next;
@@ -351,7 +349,7 @@ out:
 static ssize_t tail_pipe_bytes(struct file_struct *f, unsigned long n_bytes)
 {
 	ssize_t rc;
-	char buf[BUFFER_SIZE];
+	char buf[BUFSIZ];
 
 	/* We will just tail everything here */
 	while ((rc = read(f->fd, buf, f->blksize)) > 0) {
