@@ -244,7 +244,8 @@ static int tail_pipe_from_begin(struct file_struct *f, unsigned long n_units, co
 	int bytes_read = 0;
 	char buf[BUFSIZ];
 
-	n_units--;
+	if (n_units)
+		n_units--;
 
 	while (n_units > 0) {
 		if ((bytes_read = read(f->fd, buf, BUFSIZ)) <= 0) {
@@ -295,6 +296,9 @@ static int tail_pipe_lines(struct file_struct *f, unsigned long n_lines)
 
 	if (from_begin)
 		return tail_pipe_from_begin(f, n_lines, M_LINES);
+
+	if (n_lines == 0)
+		return 0;
 
 	first = last = emalloc(sizeof(struct line_buf));
 	first->n_bytes = first->n_lines = 0;
@@ -401,6 +405,10 @@ static int tail_pipe_bytes(struct file_struct *f, unsigned long n_bytes)
 	if (from_begin)
 		return tail_pipe_from_begin(f, n_bytes, M_BYTES);
 
+	/* XXX: Needed? */
+	if (n_bytes == 0)
+		return 0;
+
 	first = last = emalloc(sizeof(struct char_buf));
 	first->n_bytes = 0;
 	first->next = NULL;
@@ -506,9 +514,6 @@ static int tail_file(struct file_struct *f, unsigned long n_units, char mode, ch
 	if (IS_PIPELIKE(finfo.st_mode) || f->fd == STDIN_FILENO) {
 		if (verbose)
 			write_header(f->name);
-
-		if (n_units == 0)
-			return 0;
 
 		if (mode == M_LINES)
 			return tail_pipe_lines(f, n_units);
