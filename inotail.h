@@ -13,7 +13,7 @@
 #define DEFAULT_N_LINES 10
 
 /* tail modes */
-enum { M_LINES, M_BYTES };
+typedef enum { M_LINES, M_BYTES } mode_t;
 
 /* Every tailed file is represented as a file_struct */
 struct file_struct {

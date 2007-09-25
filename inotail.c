@@ -261,7 +261,7 @@ static ssize_t tail_pipe(struct file_struct *f)
 	return rc;
 }
 
-static int tail_file(struct file_struct *f, unsigned long n_units, char mode, char forever)
+static int tail_file(struct file_struct *f, unsigned long n_units, mode_t mode, char forever)
 {
 	ssize_t bytes_read = 0;
 	off_t offset = 0;
@@ -458,7 +458,8 @@ int main(int argc, char **argv)
 	int i, c, ret = 0;
 	int n_files;
 	unsigned long n_units = DEFAULT_N_LINES;
-	char forever = 0, mode = M_LINES;
+	mode_t mode = M_LINES;
+	char forever = 0;
 	char **filenames;
 	struct file_struct *files = NULL;
 
