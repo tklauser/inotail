@@ -244,6 +244,9 @@ static int tail_pipe_from_begin(struct file_struct *f, unsigned long n_units, co
 	int bytes_read = 0;
 	char buf[BUFSIZ];
 
+	if (n_units)
+		n_units--;
+
 	while (n_units > 0) {
 		if ((bytes_read = read(f->fd, buf, BUFSIZ)) <= 0) {
 			if (bytes_read < 0 && (errno == EINTR || errno == EAGAIN))
@@ -292,7 +295,7 @@ static int tail_pipe_lines(struct file_struct *f, unsigned long n_lines)
 	const char *p;
 
 	if (from_begin)
-		return tail_pipe_from_begin(f, n_lines - 1, M_LINES);
+		return tail_pipe_from_begin(f, n_lines, M_LINES);
 
 	if (n_lines == 0)
 		return 0;
@@ -400,7 +403,7 @@ static int tail_pipe_bytes(struct file_struct *f, unsigned long n_bytes)
 	unsigned long i = 0;		/* Index into buffer */
 
 	if (from_begin)
-		return tail_pipe_from_begin(f, n_bytes - 1, M_BYTES);
+		return tail_pipe_from_begin(f, n_bytes, M_BYTES);
 
 	/* XXX: Needed? */
 	if (n_bytes == 0)
