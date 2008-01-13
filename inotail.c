@@ -68,7 +68,7 @@ static void *emalloc(size_t size)
 	void *ret = malloc(size);
 
 	if (unlikely(!ret)) {
-		fprintf(stderr, "Error: Failed to allocate %d bytes of memory (%s)\n", size, strerror(errno));
+		fprintf(stderr, "Error: Failed to allocate %lu bytes of memory (%s)\n", size, strerror(errno));
 		exit(EXIT_FAILURE);
 	}
 
