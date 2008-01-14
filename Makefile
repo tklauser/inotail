@@ -1,10 +1,10 @@
 # Makefile for inotail
 #
-# Copyright (C) 2006-2007 Tobias Klauser <tklauser@distanz.ch>
+# Copyright (C) 2006-2008 Tobias Klauser <tklauser@distanz.ch>
 #
 # Licensed under the terms of the GNU General Public License; version 2 or later.
 
-VERSION	= 0.5
+VERSION	= 0.6-pre0
 
 # Paths
 prefix	= /usr/local
