@@ -340,11 +340,22 @@ static int handle_inotify_event(struct inotify_event *inev, struct file_struct *
 
 	if (inev->mask & IN_MODIFY) {
 		char *fbuf;
-		ssize_t rc;
+		ssize_t bytes_read;
 		struct stat finfo;
 
 		if (verbose)
 			write_header(f->name);
+
+		if ((ret = fstat(f->fd, &finfo)) < 0) {
+			fprintf(stderr, "Error: Could not stat file '%s' (%s)\n", f->name, strerror(errno));
+			goto ignore;
+		}
+
+		/* Regular file got truncated */
+		if (S_ISREG(finfo.st_mode) && finfo.st_size < f->size) {
+			fprintf(stderr, "File '%s' truncated\n", f->name);
+			f->size = finfo.st_size;
+		}
 
 		/* Seek to old file size */
 		if ((ret = lseek(f->fd, f->size, SEEK_SET)) == (off_t) -1) {
@@ -354,16 +365,10 @@ static int handle_inotify_event(struct inotify_event *inev, struct file_struct *
 
 		fbuf = emalloc(f->blksize);
 
-		while ((rc = read(f->fd, fbuf, f->blksize)) != 0)
-			write(STDOUT_FILENO, fbuf, (size_t) rc);
-
-		if ((ret = fstat(f->fd, &finfo)) < 0) {
-			fprintf(stderr, "Error: Could not stat file '%s' (%s)\n", f->name, strerror(errno));
-			free(fbuf);
-			goto ignore;
+		while ((bytes_read = read(f->fd, fbuf, f->blksize)) != 0) {
+			write(STDOUT_FILENO, fbuf, (size_t) bytes_read);
+			f->size += bytes_read;
 		}
-
-		f->size = finfo.st_size;
 
 		free(fbuf);
 		return ret;
