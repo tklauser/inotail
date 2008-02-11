@@ -381,6 +381,8 @@ static int handle_inotify_event(struct inotify_event *inev, struct file_struct *
 		return 0;
 	} else if (inev->mask & IN_UNMOUNT) {
 		fprintf(stderr, "Device containing file '%s' unmounted.\n", f->name);
+	} else if (inev->mask & IN_IGNORED) {
+		return 0;
 	}
 
 ignore:
