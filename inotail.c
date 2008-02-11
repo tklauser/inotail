@@ -105,8 +105,10 @@ static void ignore_file(struct file_struct *f)
 		close(f->fd);
 		f->fd = -1;
 	}
-	f->ignore = 1;
-	n_ignored++;
+	if (!f->ignore) {
+		f->ignore = 1;
+		n_ignored++;
+	}
 }
 
 static inline char *pretty_name(char *filename)
