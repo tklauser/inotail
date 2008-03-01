@@ -10,8 +10,7 @@
 #include <sys/types.h>
 #include "inotify.h"
 
-/* Number of items to tail. */
-#define DEFAULT_N_LINES 10
+#define DEFAULT_N_LINES 10	/* Number of items to tail. */
 
 #define DEFAULT_BUFFER_SIZE 4096
 /* inotify event buffer length for one file */
@@ -28,6 +27,21 @@ struct file_struct {
 	blksize_t blksize;	/* Blocksize for filesystem I/O */
 	unsigned ignore;	/* Whether to ignore the file in further processing */
 	int i_watch;		/* Inotify watch associated with file_struct */
+};
+
+/* struct for linked list of buffers/lines in tail_pipe_lines */
+struct line_buf {
+	char buf[BUFSIZ];
+	size_t n_lines;
+	size_t n_bytes;
+	struct line_buf *next;
+};
+
+/* struct for linked list of byte buffers in tail_pipe_bytes */
+struct char_buf {
+	char buf[BUFSIZ];
+	size_t n_bytes;
+	struct char_buf *next;
 };
 
 #define IS_PIPELIKE(mode) \
