@@ -8,9 +8,14 @@
 #define _INOTAIL_H
 
 #include <sys/types.h>
+#include "inotify.h"
 
 /* Number of items to tail. */
 #define DEFAULT_N_LINES 10
+
+#define DEFAULT_BUFFER_SIZE 4096
+/* inotify event buffer length for one file */
+#define INOTIFY_BUFLEN (4 * sizeof(struct inotify_event))
 
 /* tail modes */
 typedef enum { M_LINES, M_BYTES } mode_t;
@@ -34,16 +39,16 @@ struct file_struct {
 
 #define is_digit(c) ((c) >= '0' && (c) <= '9')
 
-#ifdef DEBUG
-# define dprintf(fmt, args...) fprintf(stderr, fmt, ##args)
-#else
-# define dprintf(fmt, args...)
-#endif /* DEBUG */
-
 #ifdef __GNUC__
 # define unlikely(x) __builtin_expect(!!(x), 0)
 #else
 # define unlikely(x) (x)
 #endif /* __GNUC__ */
+
+#ifdef DEBUG
+# define dprintf(fmt, args...) fprintf(stderr, fmt, ##args)
+#else
+# define dprintf(fmt, args...)
+#endif /* DEBUG */
 
 #endif /* _INOTAIL_H */

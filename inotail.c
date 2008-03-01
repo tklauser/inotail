@@ -35,20 +35,14 @@
 
 #include "inotify.h"
 #include "inotify-syscalls.h"
-
 #include "inotail.h"
 
 #define PROGRAM_NAME "inotail"
-#define DEFAULT_BUFFER_SIZE 4096
-/* inotify event buffer length for one file */
-#define INOTIFY_BUFLEN (4 * sizeof(struct inotify_event))
 
 /* Print header with filename before tailing the file? */
 static char verbose = 0;
-
 /* Tailing relative to begin or end of file */
 static char from_begin = 0;
-
 /* Number of ignored files */
 static int n_ignored = 0;
 
