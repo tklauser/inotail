@@ -490,20 +490,17 @@ static int tail_file(struct file_struct *f, unsigned long n_units, mode_t mode, 
 		f->fd = open(f->name, O_RDONLY);
 		if (unlikely(f->fd < 0)) {
 			fprintf(stderr, "Error: Could not open file '%s' (%s)\n", f->name, strerror(errno));
-			ignore_file(f);
 			return -1;
 		}
 	}
 
 	if (fstat(f->fd, &finfo) < 0) {
 		fprintf(stderr, "Error: Could not stat file '%s' (%s)\n", f->name, strerror(errno));
-		ignore_file(f);
 		return -1;
 	}
 
 	if (!IS_TAILABLE(finfo.st_mode)) {
 		fprintf(stderr, "Error: '%s' of unsupported file type (%s)\n", f->name, strerror(errno));
-		ignore_file(f);
 		return -1;
 	}
 
@@ -527,10 +524,8 @@ static int tail_file(struct file_struct *f, unsigned long n_units, mode_t mode, 
 		offset = bytes_to_offset(f, n_units);
 
 	/* We only get negative offsets on errors */
-	if (unlikely(offset < 0)) {
-		ignore_file(f);
+	if (unlikely(offset < 0))
 		return -1;
-	}
 
 	if (lseek(f->fd, offset, SEEK_SET) == (off_t) -1) {
 		fprintf(stderr, "Error: Could not seek in file '%s' (%s)\n", f->name, strerror(errno));
