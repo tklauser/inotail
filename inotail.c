@@ -233,6 +233,8 @@ static off_t bytes_to_offset(struct file_struct *f, unsigned long n_bytes)
 	} else if ((off_t) n_bytes < f->size)
 		offset = f->size - (off_t) n_bytes;
 
+	/* Otherwise offset stays 0 (begin of file) */
+
 	return offset;
 }
 
@@ -295,7 +297,7 @@ static int tail_pipe_lines(struct file_struct *f, unsigned long n_lines)
 		return tail_pipe_from_begin(f, n_lines, M_LINES);
 
 	if (n_lines == 0)
-		return 0;
+		return 0;	/* No lines to tail */
 
 	first = last = emalloc(sizeof(struct line_buf));
 	first->n_bytes = first->n_lines = 0;
@@ -307,7 +309,7 @@ static int tail_pipe_lines(struct file_struct *f, unsigned long n_lines)
 			if (rc < 0 && (errno == EINTR || errno == EAGAIN))
 				continue;
 			else
-				break;
+				break;	/* No more data to read */
 		}
 		tmp->n_bytes = rc;
 		tmp->n_lines = 0;
@@ -329,7 +331,12 @@ static int tail_pipe_lines(struct file_struct *f, unsigned long n_lines)
 			last->n_bytes += tmp->n_bytes;
 			last->n_lines += tmp->n_lines;
 		} else {
-			last = last->next = tmp;
+			/* Add buffer to the list */
+			last->next = tmp;
+			last = last->next;
+			/* We read more than n_lines lines, reuse the first
+			 * buffer.
+			 */
 			if (total_lines - first->n_lines > n_lines) {
 				tmp = first;
 				total_lines -= first->n_lines;
@@ -361,6 +368,7 @@ static int tail_pipe_lines(struct file_struct *f, unsigned long n_lines)
 
 	p = tmp->buf;
 
+	/* Read too many lines, advance */
 	if (total_lines > n_lines) {
 		unsigned long j;
 		for (j = total_lines - n_lines; j; --j) {
@@ -392,6 +400,7 @@ out:
 	return rc;
 }
 
+/* TODO: Merge some parts (especially buffer handling) with tail_pipe_lines() */
 static int tail_pipe_bytes(struct file_struct *f, unsigned long n_bytes)
 {
 	struct char_buf *first, *last, *tmp;
@@ -416,7 +425,7 @@ static int tail_pipe_bytes(struct file_struct *f, unsigned long n_bytes)
 			if (rc < 0 && (errno == EINTR || errno == EAGAIN))
 				continue;
 			else
-				break;
+				break;	/* No more data to read */
 		}
 		total_bytes += rc;
 		tmp->n_bytes = rc;
@@ -429,7 +438,12 @@ static int tail_pipe_bytes(struct file_struct *f, unsigned long n_bytes)
 			memcpy(&last->buf[last->n_bytes], tmp->buf, tmp->n_bytes);
 			last->n_bytes += tmp->n_bytes;
 		} else {
-			last = last->next = tmp;
+			/* Add buffer to the list */
+			last->next = tmp;
+			last = last->next;
+			/* We read more than n_bytess bytes, reuse the first
+			 * buffer.
+			 */
 			if (total_bytes - first->n_bytes > n_bytes) {
 				tmp = first;
 				total_bytes -= first->n_bytes;
@@ -450,6 +464,7 @@ static int tail_pipe_bytes(struct file_struct *f, unsigned long n_bytes)
 	for (tmp = first; total_bytes - tmp->n_bytes > n_bytes; tmp = tmp->next)
 		total_bytes -= tmp->n_bytes;
 
+	/* Read too many bytes, advance */
 	if (total_bytes > n_bytes)
 		i = total_bytes - n_bytes;
 
