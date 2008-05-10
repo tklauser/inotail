@@ -12,12 +12,11 @@
 
 #define DEFAULT_N_LINES 10	/* Number of items to tail. */
 
-#define DEFAULT_BUFFER_SIZE 4096
 /* inotify event buffer length for one file */
 #define INOTIFY_BUFLEN (4 * sizeof(struct inotify_event))
 
 /* tail modes */
-typedef enum { M_LINES, M_BYTES } mode_t;
+enum tail_mode { M_LINES, M_BYTES };
 
 /* Every tailed file is represented as a file_struct */
 struct file_struct {
