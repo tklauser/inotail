@@ -1,3 +1,12 @@
+inotail 0.6
+
+  * Correctly handle tailing from pipes
+  * Do not try to seek on pipes when following (thanks Alexander Sulfrian)
+  * Handle file truncation in follow mode
+  * Various small fixes
+
+  -- Tobias Klauser <tklauser@distanz.ch> 2008-08-31 21:15
+
 inotail 0.5
 
   * Output verbose file headers correctly when used in a pipe
