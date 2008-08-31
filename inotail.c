@@ -591,7 +591,7 @@ static int handle_inotify_event(struct inotify_event *inev, struct file_struct *
 		}
 
 		/* Seek to old file size */
-		if ((ret = lseek(f->fd, f->size, SEEK_SET)) == (off_t) -1) {
+		if (!IS_PIPELIKE(finfo.st_mode) && (ret = lseek(f->fd, f->size, SEEK_SET)) == (off_t) -1) {
 			fprintf(stderr, "Error: Could not seek in file '%s' (%s)\n", f->name, strerror(errno));
 			goto ignore;
 		}
