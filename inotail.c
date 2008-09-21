@@ -33,8 +33,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
-#include "inotify.h"
-#include "inotify-syscalls.h"
+#include <sys/inotify.h>
 
 #include "inotail.h"
 
