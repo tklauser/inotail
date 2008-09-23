@@ -32,22 +32,16 @@
 #include <getopt.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-
 #include <sys/inotify.h>
 
 #include "inotail.h"
 
 #define PROGRAM_NAME "inotail"
-#define DEFAULT_BUFFER_SIZE 4096
-/* inotify event buffer length for one file */
-#define INOTIFY_BUFLEN (4 * sizeof(struct inotify_event))
 
 /* Print header with filename before tailing the file? */
 static char verbose = 0;
-
 /* Tailing relative to begin or end of file */
 static char from_begin = 0;
-
 /* Number of ignored files */
 static int n_ignored = 0;
 
@@ -62,7 +56,7 @@ static const struct option long_opts[] = {
 	{ NULL, 0, NULL, 0 }
 };
 
-static void *emalloc(size_t size)
+static void *emalloc(const size_t size)
 {
 	void *ret = malloc(size);
 
@@ -94,7 +88,7 @@ static inline void setup_file(struct file_struct *f)
 {
 	f->fd = f->i_watch = -1;
 	f->size = 0;
-	f->blksize = DEFAULT_BUFFER_SIZE;
+	f->blksize = BUFSIZ;
 	f->ignore = 0;
 }
 
@@ -104,8 +98,10 @@ static void ignore_file(struct file_struct *f)
 		close(f->fd);
 		f->fd = -1;
 	}
-	f->ignore = 1;
-	n_ignored++;
+	if (!f->ignore) {
+		f->ignore = 1;
+		n_ignored++;
+	}
 }
 
 static inline char *pretty_name(char *filename)
@@ -236,27 +232,262 @@ static off_t bytes_to_offset(struct file_struct *f, unsigned long n_bytes)
 	} else if ((off_t) n_bytes < f->size)
 		offset = f->size - (off_t) n_bytes;
 
+	/* Otherwise offset stays 0 (begin of file) */
+
 	return offset;
 }
 
-static ssize_t tail_pipe(struct file_struct *f)
+static int tail_pipe_from_begin(struct file_struct *f, unsigned long n_units, const char mode)
 {
-	ssize_t rc;
-	char *buf = emalloc(f->blksize);
+	int bytes_read = 0;
+	char buf[BUFSIZ];
 
-	if (verbose)
-		write_header(f->name);
+	if (n_units)
+		n_units--;
 
-	/* We will just tail everything here */
-	while ((rc = read(f->fd, buf, f->blksize)) > 0) {
-		if ((rc = write(STDOUT_FILENO, buf, (size_t) rc)) <= 0) {
-			/* e.g. when writing to a pipe which gets closed */
-			fprintf(stderr, "Error: Could not write to stdout (%s)\n", strerror(errno));
-			break;
+	while (n_units > 0) {
+		if ((bytes_read = read(f->fd, buf, BUFSIZ)) <= 0) {
+			if (bytes_read < 0 && (errno == EINTR || errno == EAGAIN))
+				continue;
+			else
+				return bytes_read;
+		}
+
+		if (mode == M_LINES) {
+			int i;
+			ssize_t block_size = BUFSIZ;
+
+			if (bytes_read < BUFSIZ)
+				block_size = bytes_read;
+
+			for (i = 0; i < block_size; i++) {
+				if (buf[i] == '\n') {
+					if (--n_units == 0)
+						break;
+				}
+			}
+
+			if (++i < block_size)
+				write(STDOUT_FILENO, &buf[i], bytes_read - i);
+		} else {
+			if ((unsigned long) bytes_read > n_units) {
+				write(STDOUT_FILENO, &buf[n_units], bytes_read - n_units);
+				bytes_read = n_units;
+			}
+
+			n_units -= bytes_read;
 		}
 	}
 
-	free(buf);
+	while ((bytes_read = read(f->fd, buf, BUFSIZ)) > 0)
+		write(STDOUT_FILENO, buf, (size_t) bytes_read);
+
+	return 0;
+}
+
+static int tail_pipe_lines(struct file_struct *f, unsigned long n_lines)
+{
+	struct line_buf *first, *last, *tmp;
+	int rc;
+	unsigned long total_lines = 0;
+	const char *p;
+
+	if (from_begin)
+		return tail_pipe_from_begin(f, n_lines, M_LINES);
+
+	if (n_lines == 0)
+		return 0;	/* No lines to tail */
+
+	first = last = emalloc(sizeof(struct line_buf));
+	first->n_bytes = first->n_lines = 0;
+	first->next = NULL;
+	tmp = emalloc(sizeof(struct line_buf));
+
+	while (1) {
+		if ((rc = read(f->fd, tmp->buf, BUFSIZ)) <= 0) {
+			if (rc < 0 && (errno == EINTR || errno == EAGAIN))
+				continue;
+			else
+				break;	/* No more data to read */
+		}
+		tmp->n_bytes = rc;
+		tmp->n_lines = 0;
+		tmp->next = NULL;
+		p = tmp->buf;
+
+		/* Count the lines in the current buffer */
+		while ((p = memchr(p, '\n', tmp->buf + rc - p))) {
+			p++;
+			tmp->n_lines++;
+		}
+		total_lines += tmp->n_lines;
+
+		/* Try to append to the previous buffer if there's enough free
+		 * space
+		 */
+		if (tmp->n_bytes + last->n_bytes < BUFSIZ) {
+			memcpy(&last->buf[last->n_bytes], tmp->buf, tmp->n_bytes);
+			last->n_bytes += tmp->n_bytes;
+			last->n_lines += tmp->n_lines;
+		} else {
+			/* Add buffer to the list */
+			last->next = tmp;
+			last = last->next;
+			/* We read more than n_lines lines, reuse the first
+			 * buffer.
+			 */
+			if (total_lines - first->n_lines > n_lines) {
+				tmp = first;
+				total_lines -= first->n_lines;
+				first = first->next;
+			} else
+				tmp = emalloc(sizeof(struct line_buf));
+		}
+	}
+
+	free(tmp);
+
+	if (rc < 0) {
+		fprintf(stderr, "Error: Could not read from %s\n", pretty_name(f->name));
+		goto out;
+	}
+
+	if (last->n_bytes == 0)
+		goto out;
+
+	/* Count incomplete lines */
+	if (last->buf[last->n_bytes - 1] != '\n') {
+		last->n_lines++;
+		total_lines++;
+	}
+
+	/* Skip unneeded buffers */
+	for (tmp = first; total_lines - tmp->n_lines > n_lines; tmp = tmp->next)
+		total_lines -= tmp->n_lines;
+
+	p = tmp->buf;
+
+	/* Read too many lines, advance */
+	if (total_lines > n_lines) {
+		unsigned long j;
+		for (j = total_lines - n_lines; j; --j) {
+			p = memchr(p, '\n', tmp->buf + tmp->n_bytes - p);
+			p++;
+		}
+	}
+
+	if ((rc = write(STDOUT_FILENO, p, tmp->buf + tmp->n_bytes - p)) <= 0) {
+		/* e.g. when writing to a pipe which gets closed */
+		fprintf(stderr, "Error: Could not write to stdout (%s)\n", strerror(errno));
+		goto out;
+	}
+
+	for (tmp = tmp->next; tmp; tmp = tmp->next)
+		if ((rc = write(STDOUT_FILENO, tmp->buf, tmp->n_bytes)) <= 0) {
+			fprintf(stderr, "Error: Could not write to stdout (%s)\n", strerror(errno));
+			goto out;
+		}
+
+	rc = 0;
+out:
+	while (first) {
+		tmp = first->next;
+		free(first);
+		first = tmp;
+	}
+
+	return rc;
+}
+
+/* TODO: Merge some parts (especially buffer handling) with tail_pipe_lines() */
+static int tail_pipe_bytes(struct file_struct *f, unsigned long n_bytes)
+{
+	struct char_buf *first, *last, *tmp;
+	int rc;
+	unsigned long total_bytes = 0;
+	unsigned long i = 0;		/* Index into buffer */
+
+	if (from_begin)
+		return tail_pipe_from_begin(f, n_bytes, M_BYTES);
+
+	/* XXX: Needed? */
+	if (n_bytes == 0)
+		return 0;
+
+	first = last = emalloc(sizeof(struct char_buf));
+	first->n_bytes = 0;
+	first->next = NULL;
+	tmp = emalloc(sizeof(struct char_buf));
+
+	while(1) {
+		if ((rc = read(f->fd, tmp->buf, BUFSIZ)) <= 0) {
+			if (rc < 0 && (errno == EINTR || errno == EAGAIN))
+				continue;
+			else
+				break;	/* No more data to read */
+		}
+		total_bytes += rc;
+		tmp->n_bytes = rc;
+		tmp->next = NULL;
+
+		/* Try to append to the previous buffer if there's enough free
+		 * space
+		 */
+		if (tmp->n_bytes + last->n_bytes < BUFSIZ) {
+			memcpy(&last->buf[last->n_bytes], tmp->buf, tmp->n_bytes);
+			last->n_bytes += tmp->n_bytes;
+		} else {
+			/* Add buffer to the list */
+			last->next = tmp;
+			last = last->next;
+			/* We read more than n_bytess bytes, reuse the first
+			 * buffer.
+			 */
+			if (total_bytes - first->n_bytes > n_bytes) {
+				tmp = first;
+				total_bytes -= first->n_bytes;
+				first = first->next;
+			} else
+				tmp = emalloc(sizeof(struct char_buf));
+		}
+	}
+
+	free(tmp);
+
+	if (rc < 0) {
+		fprintf(stderr, "Error: Could not read from %s\n", pretty_name(f->name));
+		goto out;
+	}
+
+	/* Skip unneeded buffers */
+	for (tmp = first; total_bytes - tmp->n_bytes > n_bytes; tmp = tmp->next)
+		total_bytes -= tmp->n_bytes;
+
+	/* Read too many bytes, advance */
+	if (total_bytes > n_bytes)
+		i = total_bytes - n_bytes;
+
+	if ((rc = write(STDOUT_FILENO, &tmp->buf[i], tmp->n_bytes - i)) <= 0) {
+		/* e.g. when writing to a pipe which gets closed */
+		fprintf(stderr, "Error: Could not write to stdout (%s)\n", strerror(errno));
+		goto out;
+	}
+
+	for (tmp = tmp->next; tmp; tmp = tmp->next)
+		if ((rc = write(STDOUT_FILENO, tmp->buf, tmp->n_bytes)) <= 0) {
+			fprintf(stderr, "Error: Could not write to stdout (%s)\n", strerror(errno));
+			goto out;
+		}
+
+
+	rc = 0;
+out:
+	while (first) {
+		tmp = first->next;
+		free(first);
+		first = tmp;
+	}
+
 	return rc;
 }
 
@@ -273,26 +504,30 @@ static int tail_file(struct file_struct *f, unsigned long n_units, mode_t mode, 
 		f->fd = open(f->name, O_RDONLY);
 		if (unlikely(f->fd < 0)) {
 			fprintf(stderr, "Error: Could not open file '%s' (%s)\n", f->name, strerror(errno));
-			ignore_file(f);
 			return -1;
 		}
 	}
 
 	if (fstat(f->fd, &finfo) < 0) {
 		fprintf(stderr, "Error: Could not stat file '%s' (%s)\n", f->name, strerror(errno));
-		ignore_file(f);
 		return -1;
 	}
 
 	if (!IS_TAILABLE(finfo.st_mode)) {
 		fprintf(stderr, "Error: '%s' of unsupported file type (%s)\n", f->name, strerror(errno));
-		ignore_file(f);
 		return -1;
 	}
 
 	/* Cannot seek on these */
-	if (IS_PIPELIKE(finfo.st_mode) || f->fd == STDIN_FILENO)
-		return tail_pipe(f);
+	if (IS_PIPELIKE(finfo.st_mode) || f->fd == STDIN_FILENO) {
+		if (verbose)
+			write_header(f->name);
+
+		if (mode == M_LINES)
+			return tail_pipe_lines(f, n_units);
+		else
+			return tail_pipe_bytes(f, n_units);
+	}
 
 	f->size = finfo.st_size;
 	f->blksize = finfo.st_blksize;	/* TODO: Can this value be 0? */
@@ -303,18 +538,16 @@ static int tail_file(struct file_struct *f, unsigned long n_units, mode_t mode, 
 		offset = bytes_to_offset(f, n_units);
 
 	/* We only get negative offsets on errors */
-	if (unlikely(offset < 0)) {
-		ignore_file(f);
+	if (unlikely(offset < 0))
 		return -1;
-	}
-
-	if (verbose)
-		write_header(f->name);
 
 	if (lseek(f->fd, offset, SEEK_SET) == (off_t) -1) {
 		fprintf(stderr, "Error: Could not seek in file '%s' (%s)\n", f->name, strerror(errno));
 		return -1;
 	}
+
+	if (verbose)
+		write_header(f->name);
 
 	buf = emalloc(f->blksize);
 
@@ -357,7 +590,7 @@ static int handle_inotify_event(struct inotify_event *inev, struct file_struct *
 		}
 
 		/* Seek to old file size */
-		if ((ret = lseek(f->fd, f->size, SEEK_SET)) == (off_t) -1) {
+		if (!IS_PIPELIKE(finfo.st_mode) && (ret = lseek(f->fd, f->size, SEEK_SET)) == (off_t) -1) {
 			fprintf(stderr, "Error: Could not seek in file '%s' (%s)\n", f->name, strerror(errno));
 			goto ignore;
 		}
@@ -378,6 +611,8 @@ static int handle_inotify_event(struct inotify_event *inev, struct file_struct *
 		return 0;
 	} else if (inev->mask & IN_UNMOUNT) {
 		fprintf(stderr, "Device containing file '%s' unmounted.\n", f->name);
+	} else if (inev->mask & IN_IGNORED) {
+		return 0;
 	}
 
 ignore:
@@ -462,7 +697,7 @@ int main(int argc, char **argv)
 	int i, c, ret = 0;
 	int n_files;
 	unsigned long n_units = DEFAULT_N_LINES;
-	mode_t mode = M_LINES;
+	char mode = M_LINES;
 	char forever = 0;
 	char **filenames;
 	struct file_struct *files = NULL;

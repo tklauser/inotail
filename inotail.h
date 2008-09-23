@@ -8,12 +8,15 @@
 #define _INOTAIL_H
 
 #include <sys/types.h>
+#include "inotify.h"
 
-/* Number of items to tail. */
-#define DEFAULT_N_LINES 10
+#define DEFAULT_N_LINES 10	/* Number of items to tail. */
+
+/* inotify event buffer length for one file */
+#define INOTIFY_BUFLEN (4 * sizeof(struct inotify_event))
 
 /* tail modes */
-typedef enum { M_LINES, M_BYTES } mode_t;
+enum tail_mode { M_LINES, M_BYTES };
 
 /* Every tailed file is represented as a file_struct */
 struct file_struct {
@@ -25,6 +28,21 @@ struct file_struct {
 	int i_watch;		/* Inotify watch associated with file_struct */
 };
 
+/* struct for linked list of buffers/lines in tail_pipe_lines */
+struct line_buf {
+	char buf[BUFSIZ];
+	size_t n_lines;
+	size_t n_bytes;
+	struct line_buf *next;
+};
+
+/* struct for linked list of byte buffers in tail_pipe_bytes */
+struct char_buf {
+	char buf[BUFSIZ];
+	size_t n_bytes;
+	struct char_buf *next;
+};
+
 #define IS_PIPELIKE(mode) \
 	(S_ISFIFO(mode) || S_ISSOCK(mode))
 
@@ -34,16 +52,16 @@ struct file_struct {
 
 #define is_digit(c) ((c) >= '0' && (c) <= '9')
 
-#ifdef DEBUG
-# define dprintf(fmt, args...) fprintf(stderr, fmt, ##args)
-#else
-# define dprintf(fmt, args...)
-#endif /* DEBUG */
-
 #ifdef __GNUC__
 # define unlikely(x) __builtin_expect(!!(x), 0)
 #else
 # define unlikely(x) (x)
 #endif /* __GNUC__ */
+
+#ifdef DEBUG
+# define dprintf(fmt, args...) fprintf(stderr, fmt, ##args)
+#else
+# define dprintf(fmt, args...)
+#endif /* DEBUG */
 
 #endif /* _INOTAIL_H */
