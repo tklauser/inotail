@@ -158,7 +158,7 @@ static off_t lines_to_offset_from_end(struct file_struct *f, unsigned long n_lin
 			if (buf[i] == '\n') {
 				if (--n_lines == 0) {
 					free(buf);
-					return offset += i + 1; /* We don't want the first \n */
+					return offset + i + 1; /* We don't want the first \n */
 				}
 			}
 		}
@@ -248,6 +248,7 @@ static int tail_pipe_from_begin(struct file_struct *f, unsigned long n_units, co
 
 	while (n_units > 0) {
 		if ((bytes_read = read(f->fd, buf, BUFSIZ)) <= 0) {
+			/* Interrupted by a signal, retry reading */
 			if (bytes_read < 0 && (errno == EINTR || errno == EAGAIN))
 				continue;
 			else
@@ -268,6 +269,7 @@ static int tail_pipe_from_begin(struct file_struct *f, unsigned long n_units, co
 				}
 			}
 
+			/* Print remainder of the current block */
 			if (++i < block_size)
 				write(STDOUT_FILENO, &buf[i], bytes_read - i);
 		} else {
