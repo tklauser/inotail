@@ -32,9 +32,8 @@
 #include <getopt.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/inotify.h>
 
-#include "inotify.h"
-#include "inotify-syscalls.h"
 #include "inotail.h"
 
 #define PROGRAM_NAME "inotail"
