@@ -8,7 +8,7 @@
 #define _INOTAIL_H
 
 #include <sys/types.h>
-#include "inotify.h"
+#include <sys/inotify.h>
 
 #define DEFAULT_N_LINES 10	/* Number of items to tail. */
 
