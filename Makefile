@@ -13,7 +13,7 @@ MANDIR	= $(prefix)/share/man/man1
 
 CC	:= gcc
 CFLAGS	:= $(CFLAGS) -pipe -D_USE_SOURCE -DVERSION="\"$(VERSION)\"" -W -Wall \
-	   -Wstrict-prototypes -Wsign-compare -Wshadow -Wchar-subscripts \
+	   -Wextra -Wstrict-prototypes -Wsign-compare -Wshadow -Wchar-subscripts \
 	   -Wmissing-declarations -Wpointer-arith -Wcast-align -Wmissing-prototypes
 
 # Compile with 'make DEBUG=true' to enable debugging
