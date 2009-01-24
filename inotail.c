@@ -100,7 +100,7 @@ static void ignore_file(struct file_struct *f)
 	}
 	if (!f->ignore) {
 		f->ignore = 1;
-		n_ignored++;
+		++n_ignored;
 	}
 }
 
@@ -128,7 +128,8 @@ static off_t lines_to_offset_from_end(struct file_struct *f, unsigned long n_lin
 	off_t offset = f->size;
 	char *buf = emalloc(f->blksize);
 
-	n_lines++;	/* We also count the last \n */
+	/* We also count the last \n */
+	++n_lines;
 
 	while (offset > 0 && n_lines > 0) {
 		int i;
@@ -324,8 +325,8 @@ static int tail_pipe_lines(struct file_struct *f, unsigned long n_lines)
 
 		/* Count the lines in the current buffer */
 		while ((p = memchr(p, '\n', tmp->buf + rc - p))) {
-			p++;
-			tmp->n_lines++;
+			++p;
+			++tmp->n_lines;
 		}
 		total_lines += tmp->n_lines;
 
@@ -364,8 +365,8 @@ static int tail_pipe_lines(struct file_struct *f, unsigned long n_lines)
 
 	/* Count incomplete lines */
 	if (last->buf[last->n_bytes - 1] != '\n') {
-		last->n_lines++;
-		total_lines++;
+		++last->n_lines;
+		++total_lines;
 	}
 
 	/* Skip unneeded buffers */
@@ -379,7 +380,7 @@ static int tail_pipe_lines(struct file_struct *f, unsigned long n_lines)
 		unsigned long j;
 		for (j = total_lines - n_lines; j; --j) {
 			p = memchr(p, '\n', tmp->buf + tmp->n_bytes - p);
-			p++;
+			++p;
 		}
 	}
 
@@ -571,7 +572,8 @@ static int tail_file(struct file_struct *f, unsigned long n_units, mode_t mode, 
 			free(buf);
 			return -1;
 		}
-	} /* Let the fd open otherwise, we'll need it */
+	}
+	/* Let the fd open otherwise, we'll need it */
 
 	free(buf);
 	return 0;
@@ -669,6 +671,7 @@ static int watch_files(struct file_struct *files, int n_files)
 				continue;
 			else {
 				fprintf(stderr, "Error: Could not read inotify events (%s)\n", strerror(errno));
+				close(ifd);
 				exit(EXIT_FAILURE);
 			}
 		}
@@ -700,6 +703,7 @@ static int watch_files(struct file_struct *files, int n_files)
 	}
 
 	close(ifd);
+
 	return -1;
 }
 
@@ -721,9 +725,9 @@ int main(int argc, char **argv)
 		case 'n':
 			if (*optarg == '+') {
 				from_begin = 1;
-				optarg++;
+				++optarg;
 			} else if (*optarg == '-')
-				optarg++;
+				++optarg;
 
 			if (!is_digit(*optarg)) {
 				fprintf(stderr, "Error: Invalid number of units: %s\n", optarg);
