@@ -289,7 +289,12 @@ static int tail_pipe_from_begin(struct file_struct *f, unsigned long n_units, co
 
 static int tail_pipe_lines(struct file_struct *f, unsigned long n_lines)
 {
-	struct line_buf *first, *last, *tmp;
+	struct line_buf {
+		char buf[BUFSIZ];
+		size_t n_lines;
+		size_t n_bytes;
+		struct line_buf *next;
+	} *first, *last, *tmp;
 	int rc;
 	unsigned long total_lines = 0;
 	const char *p;
@@ -404,7 +409,11 @@ out:
 /* TODO: Merge some parts (especially buffer handling) with tail_pipe_lines() */
 static int tail_pipe_bytes(struct file_struct *f, unsigned long n_bytes)
 {
-	struct char_buf *first, *last, *tmp;
+	struct char_buf {
+		char buf[BUFSIZ];
+		size_t n_bytes;
+		struct char_buf *next;
+	} *first, *last, *tmp;
 	int rc;
 	unsigned long total_bytes = 0;
 	unsigned long i = 0;		/* Index into buffer */
