@@ -716,10 +716,15 @@ static int watch_files(struct file_struct *files, int n_files)
 				}
 			}
 
-			if (unlikely(!f))
-				break;
+			/* Spurious event */
+			if (unlikely(!f)) {
+				ev_idx += sizeof(struct inotify_event) + inev->len;
+				continue;
+			}
 
-			if (handle_inotify_event(inev, f) < 0)
+			if (handle_inotify_event(inev, f) < 0 && n_ignored == n_files)
+				/* Got an error handling the event and no files
+				 * left unignored */
 				break;
 
 			ev_idx += sizeof(struct inotify_event) + inev->len;
