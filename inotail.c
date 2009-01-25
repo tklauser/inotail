@@ -49,9 +49,11 @@ static int n_ignored = 0;
 static const struct option long_opts[] = {
 	{ "bytes", required_argument, NULL, 'c' },
 	{ "follow", optional_argument, NULL, 'f' },
-	{ "lines", required_argument, NULL, 'n' },
-	{ "verbose", no_argument, NULL, 'v' },
 	{ "help", no_argument, NULL, 'h' },
+	{ "lines", required_argument, NULL, 'n' },
+	{ "quiet", no_argument, NULL, 'q' },
+	{ "silent", no_argument, NULL, 'q' },
+	{ "verbose", no_argument, NULL, 'v' },
 	{ "version", no_argument, NULL, 'V' },
 	{ NULL, 0, NULL, 0 }
 };
@@ -74,7 +76,9 @@ static void usage(const int status)
 			"  -c N, --bytes=N    output the last N bytes\n"
 			"  -f,   --follow     output as the file grows\n"
 			"  -n N, --lines=N    output the last N lines (default: %d)\n"
-			"  -v,   --verbose    print headers with file names\n"
+			"  -q,   --quiet, --slient\n"
+			"                     never print headers with file names\n"
+			"  -v,   --verbose    always print headers with file names\n"
 			"  -h,   --help       show this help and exit\n"
 			"  -V,   --version    show version and exit\n\n"
 			"If the first character of N (the number of bytes or lines) is a `+',\n"
@@ -717,7 +721,7 @@ int main(int argc, char **argv)
 	char **filenames;
 	struct file_struct *files = NULL;
 
-	while ((c = getopt_long(argc, argv, "c:n:fvVh", long_opts, NULL)) != -1) {
+	while ((c = getopt_long(argc, argv, "c:n:fqvVh", long_opts, NULL)) != -1) {
 		switch (c) {
 		case 'c':
 			mode = M_BYTES;
@@ -737,6 +741,9 @@ int main(int argc, char **argv)
 			break;
                 case 'f':
 			forever = 1;
+			break;
+		case 'q':
+			verbose = 0;
 			break;
 		case 'v':
 			verbose = 1;

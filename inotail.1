@@ -2,14 +2,14 @@
 .\" ** The above line should force tbl to be a preprocessor **
 .\" Man page for inotail
 .\"
-.\" Copyright (c) 2006 Tobias Klauser <tklauser@distanz.ch>
+.\" Copyright (c) 2006-2009 Tobias Klauser <tklauser@distanz.ch>
 .\"
 .\" You may distribute under the terms of the GNU General Public
 .\" License as specified in the file COPYING that comes with
 .\" inotail.
 
 .pc
-.TH INOTAIL 1 "2006-08-13" "" "Inotify enhanced tail"
+.TH INOTAIL 1 "2009-01-25" "" "Inotify enhanced tail"
 .SH NAME
 inotail \- A fast and lightweight version of tail using inotify
 .SH SYNOPSIS
@@ -30,24 +30,27 @@ Currently inotail is not fully compatible to neither POSIX or GNU tail but might
 be in the future.
 .SH OPTIONS
 .TP
-.B \-c \fIN\fR, \fB\-\-bytes\fR=\fIN\fR
+.B \-c \fIN\fR, \fB\-\-bytes\fR=\fIN
 output the last N bytes. If the first character of N is a '+', begin printing
 with the Nth character from the start of each file.
 .TP
-.B \-f, \fB\-\-follow
+.B \-f\fR, \fB\-\-follow
 keep the file(s) open and print appended data as the file grows
 .TP
-.B \-n \fIN\fR, \fB\-\-lines\fR=\fIN\fR
+.B \-n \fIN\fR, \fB\-\-lines\fR=\fIN
 output the last N lines (default: 10) If the first character of N is a '+',
 begin printing with the Nth line from the start of each file.
 .TP
-.B \-v, \fB\-\-verbose
-print headers with file names
+.B \-q\fR, \fB\-\-quiet\fR, \fB\-\-silent
+never print headers with file names
 .TP
-.B \-h, \fB\-\-help
+.B \-v\fR, \fB\-\-verbose
+alway print headers with file names
+.TP
+.B \-h\fR, \fB\-\-help
 show help and exit
 .TP
-.B \-V, \fB\-\-version
+.B \-V\fR, \fB\-\-version
 show inotail version and exit
 .SH AUTHOR
 .PP
