@@ -783,7 +783,7 @@ int main(int argc, char **argv)
 		case 's':
 			/* No sleep interval because we're never sleeping.
 			 * That's the whole point of inotail! */
-			fprintf(stderr, "Warning: Option '-s' has no effect in inotail\n");
+			fprintf(stderr, "Warning: Option '-s' has no effect, ignoring\n");
 			break;
 		case PID_OPTION:
 			/* Watching the PID is not possible because of the
@@ -792,7 +792,7 @@ int main(int argc, char **argv)
 			/* inotail (will) watch the containing directory for the
 			 * file being moved or deleted, so there is no need for
 			 * this either */
-			fprintf(stderr, "Warning: Option '--%s' has no effect in inotail\n", long_opts[option_idx].name);
+			fprintf(stderr, "Warning: Option '--%s' has no effect, ignoring\n", long_opts[option_idx].name);
 			break;
 		default:
 			usage(EXIT_FAILURE);

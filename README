@@ -8,9 +8,6 @@ versions of the Linux kernel to speed up tailing files in the follow mode (the
 listens to special events sent by the kernel through the inotify API to
 determine whether a file needs to be reread.
 
-Currently inotail is not fully compatible to neither POSIX or GNU tail but might
-be in the future.
-
 Requirements
 ------------
 - Linux kernel 2.6.13 or higher with CONFIG_INOTIFY enabled
@@ -32,6 +29,29 @@ To change these locations just set the prefix variable. E.g. to install the
 inotail binary to /usr/ and the manpage to /usr/share/man/ respectively type:
 
 	$ make prefix=/usr install
+
+Compatibility & options
+-----------------------
+inotail is fully option compatible with current POSIX and GNU tail, though the
+obsolescent options present in previous versions of those are not present (e.g.
+inotail +/-<num>). The following options are present in inotail for
+compatibility reasons (e.g. to use inotail as a tail replacement in scripts) but
+do have no effect on inotail besides emiting a warning:
+
+-s N, --sleep-interval=N  inotail does not need a sleep interval because it's
+			  relying on inotify.
+
+--max-unchanged-stats=N   inotail watches the containing directory of the file
+                          when following by name (--follow=name or -F). Thus it
+                          gets notified when a file gets moved or deleted.
+
+--pid=PID                 Watching the writer PID ios not possible, because
+                          inotail blocks on the read() call on the inotify fd.
+			  In the worst case, the dying process wouldn't cause an
+			  inotify event, so inotail would never get back from
+			  the read().
+
+These options are neither documented in the manpage nor the in-program help.
 
 License
 -------
