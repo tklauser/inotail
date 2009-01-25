@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2007, Tobias Klauser <tklauser@distanz.ch>
+ * Copyright (C) 2005-2009, Tobias Klauser <tklauser@distanz.ch>
  *
  * Licensed under the terms of the GNU General Public License; version 2 or later.
  */
@@ -21,7 +21,7 @@ enum tail_mode { M_LINES, M_BYTES };
 /* Every tailed file is represented as a file_struct */
 struct file_struct {
 	char *name;		/* Name of file (or '-' for stdin) */
-	int fd;			/* File descriptor (or -1 if file is not open */
+	int fd;			/* File descriptor (or -1 if file is not open) */
 	off_t size;		/* File size */
 	blksize_t blksize;	/* Blocksize for filesystem I/O */
 	unsigned ignore;	/* Whether to ignore the file in further processing */

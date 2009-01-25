@@ -1,6 +1,6 @@
 # Makefile for inotail
 #
-# Copyright (C) 2006-2008 Tobias Klauser <tklauser@distanz.ch>
+# Copyright (C) 2006-2009 Tobias Klauser <tklauser@distanz.ch>
 #
 # Licensed under the terms of the GNU General Public License; version 2 or later.
 
