@@ -30,6 +30,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <getopt.h>
+#include <limits.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/inotify.h>
@@ -40,19 +41,34 @@
 
 /* Print header with filename before tailing the file? */
 static char verbose = 0;
-/* Tailing relative to begin or end of file */
+/* Tailing relative to begin or end of file? */
 static char from_begin = 0;
+/* Retry reading the file if it is inaccessible? */
+static char retry = 0;
 /* Number of ignored files */
 static int n_ignored = 0;
 
-/* Command line options */
-static const struct option long_opts[] = {
+/* Pseudo-characters for long options that have no equivalent short option */
+enum {
+	RETRY_OPTION = CHAR_MAX + 1,
+	MAX_UNCHANGED_STATS_OPTION,
+	PID_OPTION
+};
+
+/* Command line options
+ * The ones marked with 'X' are here just for compatibility reasons and have no
+ * effect on inotail */
+static const struct option const long_opts[] = {
 	{ "bytes", required_argument, NULL, 'c' },
 	{ "follow", optional_argument, NULL, 'f' },
 	{ "help", no_argument, NULL, 'h' },
 	{ "lines", required_argument, NULL, 'n' },
+	/* X */ { "max-unchanged-stats", required_argument, NULL, MAX_UNCHANGED_STATS_OPTION },
+	/* X */ { "pid", required_argument, NULL, PID_OPTION },
 	{ "quiet", no_argument, NULL, 'q' },
+	{ "retry", no_argument, NULL, RETRY_OPTION },
 	{ "silent", no_argument, NULL, 'q' },
+	/* X */ { "sleep-interval", required_argument, NULL, 's' },
 	{ "verbose", no_argument, NULL, 'v' },
 	{ "version", no_argument, NULL, 'V' },
 	{ NULL, 0, NULL, 0 }
@@ -73,6 +89,9 @@ static void *emalloc(const size_t size)
 static void usage(const int status)
 {
 	fprintf(stdout, "Usage: %s [OPTION]... [FILE]...\n\n"
+			"        --retry      keep trying to open a file even if it is not\n"
+			"                     accessible at start or becomes inaccessible\n"
+			"                     later; useful when following by name\n"
 			"  -c N, --bytes=N    output the last N bytes\n"
 			"  -f,   --follow     output as the file grows\n"
 			"  -n N, --lines=N    output the last N lines (default: %d)\n"
@@ -713,7 +732,7 @@ static int watch_files(struct file_struct *files, int n_files)
 
 int main(int argc, char **argv)
 {
-	int i, c, ret = 0;
+	int i, c, option_idx, ret = 0;
 	int n_files;
 	unsigned long n_units = DEFAULT_N_LINES;
 	char mode = M_LINES;
@@ -721,7 +740,7 @@ int main(int argc, char **argv)
 	char **filenames;
 	struct file_struct *files = NULL;
 
-	while ((c = getopt_long(argc, argv, "c:n:fqvVh", long_opts, NULL)) != -1) {
+	while ((c = getopt_long(argc, argv, "c:n:fqvVhs:", long_opts, &option_idx)) != -1) {
 		switch (c) {
 		case 'c':
 			mode = M_BYTES;
@@ -733,8 +752,10 @@ int main(int argc, char **argv)
 			} else if (*optarg == '-')
 				++optarg;
 
+			/* TODO: Better sanity check */
 			if (!is_digit(*optarg)) {
-				fprintf(stderr, "Error: Invalid number of units: %s\n", optarg);
+				fprintf(stderr, "Error: Invalid number of %s: %s\n",
+						(mode == M_LINES ? "lines" : "bytes"), optarg);
 				exit(EXIT_FAILURE);
 			}
 			n_units = strtoul(optarg, NULL, 0);
@@ -748,11 +769,30 @@ int main(int argc, char **argv)
 		case 'v':
 			verbose = 1;
 			break;
+		case RETRY_OPTION:
+			retry = 1;
+			break;
 		case 'V':
 			fprintf(stdout, "%s %s\n", PROGRAM_NAME, VERSION);
 			exit(EXIT_SUCCESS);
 		case 'h':
 			usage(EXIT_SUCCESS);
+
+		/* Options with no effect in inotail, they just emit a warning */
+		case 's':
+			/* No sleep interval because we're never sleeping.
+			 * That's the whole point of inotail! */
+			fprintf(stderr, "Warning: Option '-s' has no effect in inotail\n");
+			break;
+		case PID_OPTION:
+			/* Watching the PID is not possible because of the
+			 * blocking read on the inotify fd */
+		case MAX_UNCHANGED_STATS_OPTION:
+			/* inotail (will) watch the containing directory for the
+			 * file being moved or deleted, so there is no need for
+			 * this either */
+			fprintf(stderr, "Warning: Option '--%s' has no effect in inotail\n", long_opts[option_idx].name);
+			break;
 		default:
 			usage(EXIT_FAILURE);
 		}

@@ -5,10 +5,12 @@ inotail 0.6
   * Handle file truncation in follow mode
   * Use sys/inotify.h instead of private copy of the inotify header (patch by
     Adrian Bunk)
-  * Support all GNU commandline options (even the ones that make no sense)
+  * Support all GNU commandline options (suggested by Nicolai Lissner). Some
+    make no sense for inotail and thus cause no effect besides a warning being
+    printed.
   * Various small fixes
 
-  -- Tobias Klauser <tklauser@distanz.ch> 2008-09-23 09:46
+  -- Tobias Klauser <tklauser@distanz.ch> 2009-01-25 18:33
 
 inotail 0.5
 
