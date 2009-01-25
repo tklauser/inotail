@@ -4,6 +4,7 @@
 #
 # Licensed under the terms of the GNU General Public License; version 2 or later.
 
+P = inotail
 VERSION	= 0.6
 
 # Paths
@@ -22,26 +23,38 @@ ifeq ($(strip $(DEBUG)),true)
 	CFLAGS  += -g -DDEBUG
 endif
 
-all: inotail
-inotail: inotail.o
+all: $(P)
+$(P): $(P).o
 
 %.o: %.c %.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
-install: inotail
-	install -m 775 -D inotail $(BINDIR)/inotail
-	install -m 644 -D inotail.1 $(MANDIR)/inotail.1
-	gzip -9 $(MANDIR)/inotail.1
+install: $(P)
+	install -m 775 -D $(P) $(BINDIR)/$(P)
+	install -m 644 -D $(P).1 $(MANDIR)/$(P).1
+	gzip -9 $(MANDIR)/$(P).1
 
 uninstall:
-	rm $(BINDIR)/inotail $(MANDIR)/inotail.1*
+	rm $(BINDIR)/$(P) $(MANDIR)/$(P).1*
 
 cscope:
 	cscope -b
 
-release:
-	git-archive --format=tar --prefix=inotail-$(VERSION)/ HEAD | gzip -9v > ../inotail-$(VERSION).tar.gz
-	git-archive --format=tar --prefix=inotail-$(VERSION)/ HEAD | bzip2 -9v > ../inotail-$(VERSION).tar.bz2
+archive:
+	git-archive --format=tar --prefix=$(P)-$(VERSION)/ HEAD | gzip -9v > ../$(P)-$(VERSION).tar.gz
+	git-archive --format=tar --prefix=$(P)-$(VERSION)/ HEAD | bzip2 -9v > ../$(P)-$(VERSION).tar.bz2
+
+checksum: archive
+	(cd ..; \
+		sha1sum $(P)-$(VERSION).tar.gz > $(P)-$(VERSION).tar.gz.sha1; \
+		sha1sum $(P)-$(VERSION).tar.bz2 > $(P)-$(VERSION).tar.bz2.sha1)
+
+signature: archive
+	(cd ..; \
+		gpg -a --detach-sign $(P)-$(VERSION).tar.gz; \
+		gpg -a --detach-sign $(P)-$(VERSION).tar.bz2)
+
+release: archive checksum signature
 
 clean:
-	rm -f inotail *.o cscope.*
+	rm -f $(P) *.o cscope.*
