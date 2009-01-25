@@ -565,7 +565,8 @@ static int tail_file(struct file_struct *f, unsigned long n_units, mode_t mode, 
 	}
 
 	f->size = finfo.st_size;
-	f->blksize = finfo.st_blksize;	/* TODO: Can this value be 0? */
+	if (likely(finfo.st_blksize > 0))
+		f->blksize = finfo.st_blksize;
 
 	if (mode == M_LINES)
 		offset = lines_to_offset(f, n_units);
