@@ -8,6 +8,9 @@ versions of the Linux kernel to speed up tailing files in the follow mode (the
 listens to special events sent by the kernel through the inotify API to
 determine whether a file needs to be reread.
 
+inotail is compatible to POSIX and GNU tail. See section "Compatibility &
+options" for more information.
+
 Requirements
 ------------
 - Linux kernel 2.6.13 or higher with CONFIG_INOTIFY enabled
@@ -32,7 +35,7 @@ inotail binary to /usr/ and the manpage to /usr/share/man/ respectively type:
 
 Compatibility & options
 -----------------------
-inotail is fully option compatible with current POSIX and GNU tail, though the
+inotail is fully compatible with current POSIX and GNU tail, though the
 obsolescent options present in previous versions of those are not present (e.g.
 inotail +/-<num>). The following options are present in inotail for
 compatibility reasons (e.g. to use inotail as a tail replacement in scripts) but
