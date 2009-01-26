@@ -43,7 +43,9 @@
 static char verbose = 0;
 /* Tailing relative to begin or end of file? */
 static char from_begin = 0;
-/* Retry reading the file if it is inaccessible? */
+/* Follow the file? Follow it by fd or by name? */
+static char follow = FOLLOW_NONE;
+/* Retry accessing the file if it is inaccessible? */
 static char retry = 0;
 /* Number of ignored files */
 static int n_ignored = 0;
@@ -93,7 +95,9 @@ static void usage(const int status)
 			"                     accessible at start or becomes inaccessible\n"
 			"                     later; useful when following by name\n"
 			"  -c N, --bytes=N    output the last N bytes\n"
-			"  -f,   --follow     output as the file grows\n"
+			"  -f,   --follow[={descriptor|name}]\n"
+			"                     output as the file grows (default: descriptor)\n"
+			"  -F                 same as --follow=name --retry\n"
 			"  -n N, --lines=N    output the last N lines (default: %d)\n"
 			"  -q,   --quiet, --slient\n"
 			"                     never print headers with file names\n"
@@ -526,7 +530,7 @@ out:
 	return rc;
 }
 
-static int tail_file(struct file_struct *f, unsigned long n_units, char mode, char forever)
+static int tail_file(struct file_struct *f, unsigned long n_units, char mode)
 {
 	ssize_t bytes_read = 0;
 	off_t offset = 0;
@@ -590,7 +594,7 @@ static int tail_file(struct file_struct *f, unsigned long n_units, char mode, ch
 	while ((bytes_read = read(f->fd, buf, f->blksize)) > 0)
 		write(STDOUT_FILENO, buf, (size_t) bytes_read);
 
-	if (!forever) {
+	if (!follow) {
 		if (close(f->fd) < 0) {
 			fprintf(stderr, "Error: Could not close file '%s' (%s)\n", f->name, strerror(errno));
 			free(buf);
@@ -716,7 +720,7 @@ static int watch_files(struct file_struct *files, int n_files)
 				}
 			}
 
-			/* Spurious event */
+			/* Spurious event, skip */
 			if (unlikely(!f)) {
 				ev_idx += sizeof(struct inotify_event) + inev->len;
 				continue;
@@ -742,11 +746,10 @@ int main(int argc, char **argv)
 	int n_files;
 	unsigned long n_units = DEFAULT_N_LINES;
 	char mode = M_LINES;
-	char forever = 0;
 	char **filenames;
 	struct file_struct *files = NULL;
 
-	while ((c = getopt_long(argc, argv, "c:n:fqvVhs:", long_opts, &option_idx)) != -1) {
+	while ((c = getopt_long(argc, argv, "c:n:fFqvVhs:", long_opts, &option_idx)) != -1) {
 		switch (c) {
 		case 'c':
 			mode = M_BYTES;
@@ -767,7 +770,11 @@ int main(int argc, char **argv)
 			n_units = strtoul(optarg, NULL, 0);
 			break;
                 case 'f':
-			forever = 1;
+			follow = FOLLOW_DESCRIPTOR;
+			break;
+		case 'F':
+			follow = FOLLOW_NAME;
+			retry = 1;
 			break;
 		case 'q':
 			verbose = 0;
@@ -816,7 +823,7 @@ int main(int argc, char **argv)
 
 		/* POSIX says that -f is ignored if no file operand is
 		   specified and standard input is a pipe. */
-		if (forever) {
+		if (follow) {
 			struct stat finfo;
 			int rc = fstat(STDIN_FILENO, &finfo);
 
@@ -826,7 +833,7 @@ int main(int argc, char **argv)
 			}
 
 			if (rc == 0 && IS_PIPELIKE(finfo.st_mode))
-				forever = 0;
+				follow = FOLLOW_NONE;
 		}
 	}
 
@@ -835,12 +842,12 @@ int main(int argc, char **argv)
 	for (i = 0; i < n_files; i++) {
 		files[i].name = filenames[i];
 		setup_file(&files[i]);
-		ret = tail_file(&files[i], n_units, mode, forever);
+		ret = tail_file(&files[i], n_units, mode);
 		if (ret < 0)
 			ignore_file(&files[i]);
 	}
 
-	if (forever)
+	if (follow)
 		ret = watch_files(files, n_files);
 
 	free(files);
