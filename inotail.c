@@ -526,7 +526,7 @@ out:
 	return rc;
 }
 
-static int tail_file(struct file_struct *f, unsigned long n_units, mode_t mode, char forever)
+static int tail_file(struct file_struct *f, unsigned long n_units, char mode, char forever)
 {
 	ssize_t bytes_read = 0;
 	off_t offset = 0;
