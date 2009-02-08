@@ -88,6 +88,13 @@ static void *emalloc(const size_t size)
 	return ret;
 }
 
+static inline int xargmatch(const char *context, const char *arg)
+{
+	size_t ctx_len = strlen(context);
+
+	return (strlen(arg) == ctx_len && strncmp(arg, context, ctx_len) == 0);
+}
+
 static void usage(const int status)
 {
 	fprintf(stdout, "Usage: %s [OPTION]... [FILE]...\n\n"
@@ -770,7 +777,16 @@ int main(int argc, char **argv)
 			n_units = strtoul(optarg, NULL, 0);
 			break;
                 case 'f':
-			follow = FOLLOW_DESCRIPTOR;
+			/* Just -f or --follow=descriptor */
+			if (!optarg || xargmatch("descriptor", optarg))
+				follow = FOLLOW_DESCRIPTOR;
+			else if (xargmatch("name", optarg))
+				follow = FOLLOW_NAME;
+			else {
+				fprintf(stderr, "Error: Invalid argument '%s' for --follow.\n"
+						"Try '%s --help' for more information\n", optarg, PROGRAM_NAME);
+				exit(EXIT_FAILURE);
+			}
 			break;
 		case 'F':
 			follow = FOLLOW_NAME;
