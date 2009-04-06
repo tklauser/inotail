@@ -21,6 +21,7 @@
  * Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
+#define _FILE_OFFSET_BITS 64
 #define _GNU_SOURCE
 
 #include <stdio.h>
