@@ -548,7 +548,7 @@ static int tail_file(struct file_struct *f, unsigned long n_units, char mode)
 	if (strcmp(f->name, "-") == 0)
 		f->fd = STDIN_FILENO;
 	else {
-		f->fd = open(f->name, O_RDONLY);
+		f->fd = open(f->name, O_RDONLY|O_LARGEFILE);
 		if (unlikely(f->fd < 0)) {
 			fprintf(stderr, "Error: Could not open file '%s' (%s)\n", f->name, strerror(errno));
 			return -1;
