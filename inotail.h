@@ -19,7 +19,7 @@
 enum tail_mode { M_LINES, M_BYTES };
 /* follow modes */
 enum follow_mode {
-	FOLLOW_NONE = 0,	/* Do not follow the fiel at all */
+	FOLLOW_NONE = 0,	/* Do not follow the file at all */
 	FOLLOW_DESCRIPTOR,	/* Follow the file by fd */
 	FOLLOW_NAME		/* Follow the file by name */
 };
