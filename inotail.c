@@ -615,14 +615,27 @@ static int tail_file(struct file_struct *f, unsigned long n_units, char mode)
 	return 0;
 }
 
-static int handle_inotify_event(struct inotify_event *inev, struct file_struct *f)
+static int handle_inotify_event(int ifd, struct inotify_event *inev, struct file_struct *f)
 {
 	int ret = 0;
 
-	if (inev->mask & IN_MODIFY) {
+	if (inev->mask & (IN_MODIFY|IN_CREATE)) {
 		char *fbuf;
 		ssize_t bytes_read;
 		struct stat finfo;
+
+		if (f->fd < 0) {
+			fprintf(stderr, "File '%s' needs to get reopened.\n", f->name);
+			f->fd = open(f->name, O_RDONLY);
+			if (unlikely(f->fd < 0)) {
+				fprintf(stderr, "Error: Could not open file '%s' (%s)\n", f->name, strerror(errno));
+				ignore_file(f);
+				return -1;
+			}
+
+			/* File got rotated away, so start again */
+			f->size = 0;
+		}
 
 		if (verbose)
 			write_header(f->name);
@@ -653,10 +666,24 @@ static int handle_inotify_event(struct inotify_event *inev, struct file_struct *
 
 		free(fbuf);
 		return ret;
-	} else if (inev->mask & IN_DELETE_SELF) {
-		fprintf(stderr, "File '%s' deleted.\n", f->name);
-	} else if (inev->mask & IN_MOVE_SELF) {
-		fprintf(stderr, "File '%s' moved.\n", f->name);
+	} else if (inev->mask & (IN_DELETE_SELF|IN_MOVE_SELF)) {
+		inotify_rm_watch(ifd, f->i_watch);
+		close(f->fd);
+		f->fd = -1;
+
+		if (inev->mask & IN_DELETE_SELF)
+			fprintf(stderr, "File '%s' deleted.\n", f->name);
+		else
+			fprintf(stderr, "File '%s' moved.\n", f->name);
+
+		f->i_watch = inotify_add_watch(ifd, f->name, INOTAIL_WATCH_MASK);
+		if (f->i_watch < 0) {
+			fprintf(stderr, "Error: Could not create inotify watch on file '%s' (%s)\n",
+					f->name, strerror(errno));
+			ignore_file(f);
+			return -1;
+		}
+
 		return 0;
 	} else if (inev->mask & IN_UNMOUNT) {
 		fprintf(stderr, "Device containing file '%s' unmounted.\n", f->name);
@@ -685,8 +712,7 @@ static int watch_files(struct file_struct *files, int n_files)
 
 	for (i = 0; i < n_files; i++) {
 		if (!files[i].ignore) {
-			files[i].i_watch = inotify_add_watch(ifd, files[i].name,
-						IN_MODIFY|IN_DELETE_SELF|IN_MOVE_SELF|IN_UNMOUNT);
+			files[i].i_watch = inotify_add_watch(ifd, files[i].name, INOTAIL_WATCH_MASK);
 
 			if (files[i].i_watch < 0) {
 				fprintf(stderr, "Error: Could not create inotify watch on file '%s' (%s)\n",
@@ -720,9 +746,7 @@ static int watch_files(struct file_struct *files, int n_files)
 
 			/* Which file has produced the event? */
 			for (i = 0; i < n_files; i++) {
-				if (!files[i].ignore
-						&& files[i].fd >= 0
-						&& files[i].i_watch == inev->wd) {
+				if (!files[i].ignore && files[i].i_watch == inev->wd) {
 					f = &files[i];
 					break;
 				}
@@ -734,7 +758,7 @@ static int watch_files(struct file_struct *files, int n_files)
 				continue;
 			}
 
-			if (handle_inotify_event(inev, f) < 0 && n_ignored == n_files)
+			if (handle_inotify_event(ifd, inev, f) < 0 && n_ignored == n_files)
 				/* Got an error handling the event and no files
 				 * left unignored */
 				break;

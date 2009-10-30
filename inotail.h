@@ -10,10 +10,13 @@
 #include <sys/types.h>
 #include <sys/inotify.h>
 
-#define DEFAULT_N_LINES 10	/* Number of items to tail. */
-
+/* Number of items to tail. */
+#define DEFAULT_N_LINES		10
 /* inotify event buffer length for one file */
-#define INOTIFY_BUFLEN (4 * sizeof(struct inotify_event))
+#define INOTIFY_BUFLEN		(4 * sizeof(struct inotify_event))
+/* inotify events to watch for on tailed files */
+#define INOTAIL_WATCH_MASK	\
+	(IN_MODIFY|IN_DELETE_SELF|IN_MOVE_SELF|IN_UNMOUNT|IN_CREATE)
 
 /* tail modes */
 enum tail_mode { M_LINES, M_BYTES };
