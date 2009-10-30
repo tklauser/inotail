@@ -676,6 +676,10 @@ static int handle_inotify_event(int ifd, struct inotify_event *inev, struct file
 		else
 			fprintf(stderr, "File '%s' moved.\n", f->name);
 
+		/* TODO: This should only be done in FOLLOW_NAME mode, also we
+		 * should watch the containing directory until the file
+		 * reappears and only then try to install the new watch
+		 */
 		f->i_watch = inotify_add_watch(ifd, f->name, INOTAIL_WATCH_MASK);
 		if (f->i_watch < 0) {
 			fprintf(stderr, "Error: Could not create inotify watch on file '%s' (%s)\n",
