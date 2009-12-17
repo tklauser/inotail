@@ -41,8 +41,8 @@ cscope:
 	cscope -b
 
 archive:
-	git-archive --format=tar --prefix=$(P)-$(VERSION)/ HEAD | gzip -9v > ../$(P)-$(VERSION).tar.gz
-	git-archive --format=tar --prefix=$(P)-$(VERSION)/ HEAD | bzip2 -9v > ../$(P)-$(VERSION).tar.bz2
+	git archive --format=tar --prefix=$(P)-$(VERSION)/ HEAD | gzip -9v > ../$(P)-$(VERSION).tar.gz
+	git archive --format=tar --prefix=$(P)-$(VERSION)/ HEAD | bzip2 -9v > ../$(P)-$(VERSION).tar.bz2
 
 checksum: archive
 	(cd ..; \
