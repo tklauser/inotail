@@ -707,7 +707,7 @@ ignore:
 static int watch_files(struct file_struct *files, int n_files)
 {
 	int ifd, i;
-	char buf[n_files * INOTIFY_BUFLEN];
+	char *buf = emalloc(n_files * INOTIFY_BUFLEN);
 
 	ifd = inotify_init();
 	if (errno == ENOSYS) {
@@ -775,6 +775,7 @@ static int watch_files(struct file_struct *files, int n_files)
 		}
 	}
 
+	free(buf);
 	close(ifd);
 
 	return -1;
