@@ -1,7 +1,8 @@
 /*
- * Copyright (C) 2005-2009, Tobias Klauser <tklauser@distanz.ch>
+ * Copyright (C) 2005-2011, Tobias Klauser <tklauser@distanz.ch>
  *
- * Licensed under the terms of the GNU General Public License; version 2 or later.
+ * This file is licensed under the terms of the GNU General Public License;
+ * version 2 or later.
  */
 
 #ifndef _INOTAIL_H
@@ -47,11 +48,13 @@ struct file_struct {
 #define is_digit(c) ((c) >= '0' && (c) <= '9')
 
 #ifdef __GNUC__
-# define likely(x) __builtin_expect(!!(x), 1)
-# define unlikely(x) __builtin_expect(!!(x), 0)
+# define __noreturn	__attribute ((noreturn))
+# define likely(x)	__builtin_expect(!!(x), 1)
+# define unlikely(x)	__builtin_expect(!!(x), 0)
 #else
-# define likely(x) (x)
-# define unlikely(x) (x)
+# define __noreturn
+# define likely(x)	(x)
+# define unlikely(x)	(x)
 #endif /* __GNUC__ */
 
 #ifdef DEBUG

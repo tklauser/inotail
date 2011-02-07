@@ -3,7 +3,9 @@
  * A fast implementation of tail which uses the inotify API present in
  * recent versions of the Linux kernel.
  *
- * Copyright (C) 2005-2009, Tobias Klauser <tklauser@distanz.ch>
+ * More information on http://distanz.ch/inotail
+ *
+ * Copyright (C) 2005-2011, Tobias Klauser <tklauser@distanz.ch>
  *
  * The idea was taken from turbotail.
  *
@@ -96,7 +98,7 @@ static inline int xargmatch(const char *context, const char *arg)
 	return (strlen(arg) == ctx_len && strncmp(arg, context, ctx_len) == 0);
 }
 
-static void usage(const int status)
+static void __noreturn usage(const int status)
 {
 	fprintf(stdout, "Usage: %s [OPTION]... [FILE]...\n\n"
 			"        --retry      keep trying to open a file even if it is not\n"
