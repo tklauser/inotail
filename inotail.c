@@ -63,7 +63,7 @@ enum {
 /* Command line options
  * The ones marked with 'X' are here just for compatibility reasons and have no
  * effect on inotail */
-static const struct option const long_opts[] = {
+static const struct option long_opts[] = {
 	{ "bytes", required_argument, NULL, 'c' },
 	{ "follow", optional_argument, NULL, 'f' },
 	{ "help", no_argument, NULL, 'h' },
