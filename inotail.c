@@ -421,13 +421,15 @@ static int tail_pipe_lines(struct file_struct *f, unsigned long n_lines)
 
 	if ((rc = write(STDOUT_FILENO, p, tmp->buf + tmp->n_bytes - p)) <= 0) {
 		/* e.g. when writing to a pipe which gets closed */
-		fprintf(stderr, "Error: Could not write to stdout (%s)\n", strerror(errno));
+		if (rc)
+			fprintf(stderr, "Error: Could not write to stdout (%s)\n", strerror(errno));
 		goto out;
 	}
 
 	for (tmp = tmp->next; tmp; tmp = tmp->next)
 		if ((rc = write(STDOUT_FILENO, tmp->buf, tmp->n_bytes)) <= 0) {
-			fprintf(stderr, "Error: Could not write to stdout (%s)\n", strerror(errno));
+			if (rc)
+				fprintf(stderr, "Error: Could not write to stdout (%s)\n", strerror(errno));
 			goto out;
 		}
 
